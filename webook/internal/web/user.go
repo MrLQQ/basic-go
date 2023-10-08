@@ -7,7 +7,7 @@ import (
 )
 
 const emailRegexPatterm = "^[a-zA-Z0-9]+([-_.][a-zA-Z0-9]+)*@[a-zA-Z0-9]+([-_.][a-zA-Z0-9]+)*\\.[a-z]{2,}$"
-const passwordRegexPatterm = "^(?=.*\\d)(?=.*[A-z])[\\da-zA-Z]{1,9}$"
+const passwordRegexPatterm = "^(?=.*\\d)(?=.*[A-z])[\\da-zA-Z]{1,15}$"
 
 type UserHandler struct {
 	emailRexRxp    *regexp.Regexp
@@ -61,7 +61,7 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 		return
 	}
 	if !isPassword {
-		ctx.String(http.StatusOK, "密码格式非法：密码必须要同时包含字母和数字，位数1~9")
+		ctx.String(http.StatusOK, "密码格式非法：密码必须要同时包含字母和数字，位数1~15")
 		return
 	}
 	if req.Password != req.ConfirmPassword {
