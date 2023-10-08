@@ -7,6 +7,11 @@ import (
 
 func main() {
 	server := gin.Default()
+	server.Use(func(context *gin.Context) {
+		println("这是第一个middleware")
+	}, func(context *gin.Context) {
+		println("这是第二个middleware")
+	})
 	// 静态路由
 	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello, world")
@@ -35,5 +40,5 @@ func main() {
 	})
 
 	// 如果不传参数，会监听8080端口
-	server.Run(":8080")
+	server.Run(":8081")
 }
