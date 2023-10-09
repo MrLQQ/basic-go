@@ -1,6 +1,8 @@
 package web
 
 import (
+	"basic-go/webook/internal/domain"
+	"basic-go/webook/internal/service"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -12,12 +14,14 @@ const passwordRegexPatterm = "^(?=.*\\d)(?=.*[A-z])[\\da-zA-Z]{1,15}$"
 type UserHandler struct {
 	emailRexRxp    *regexp.Regexp
 	passwordRexExp *regexp.Regexp
+	svc            *service.UserService
 }
 
-func NewUserHandler() *UserHandler {
+func NewUserHandler(svc *service.UserService) *UserHandler {
 	return &UserHandler{
 		emailRexRxp:    regexp.MustCompile(emailRegexPatterm, regexp.None),
 		passwordRexExp: regexp.MustCompile(passwordRegexPatterm, regexp.None),
+		svc:            svc,
 	}
 }
 
@@ -66,6 +70,15 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 	}
 	if req.Password != req.ConfirmPassword {
 		ctx.String(http.StatusOK, "两次密码不一致")
+		return
+	}
+
+	err = h.svc.Signup(ctx, domain.User{
+		Email:    req.Email,
+		Password: req.Password,
+	})
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
 		return
 	}
 	ctx.String(http.StatusOK, "hello,Signup注册成功")
