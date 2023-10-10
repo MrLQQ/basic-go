@@ -20,7 +20,7 @@ const onFinish = (values: any) => {
                 router.push('/users/profile')
                 return
             }
-            alert(res.data?.msg || "系统错误");
+            alert(res.data);
         }).catch((err) => {
         alert(err);
     })

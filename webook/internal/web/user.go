@@ -4,6 +4,7 @@ import (
 	"basic-go/webook/internal/domain"
 	"basic-go/webook/internal/service"
 	"errors"
+	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -12,10 +13,14 @@ import (
 
 const emailRegexPatterm = "^[a-zA-Z0-9]+([-_.][a-zA-Z0-9]+)*@[a-zA-Z0-9]+([-_.][a-zA-Z0-9]+)*\\.[a-z]{2,}$"
 const passwordRegexPatterm = "^(?=.*\\d)(?=.*[A-z])[\\da-zA-Z]{1,15}$"
+const nicknameRegexPatterm = "^[\\u4e00-\\u9fa5_a-zA-Z0-9_]{4,10}$"
+const aboutMeRegexPatterm = "^.{0,100}$"
 
 type UserHandler struct {
 	emailRexRxp    *regexp.Regexp
 	passwordRexExp *regexp.Regexp
+	nicknameRexExp *regexp.Regexp
+	aboutMeRexExp  *regexp.Regexp
 	svc            *service.UserService
 }
 
@@ -23,6 +28,8 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 	return &UserHandler{
 		emailRexRxp:    regexp.MustCompile(emailRegexPatterm, regexp.None),
 		passwordRexExp: regexp.MustCompile(passwordRegexPatterm, regexp.None),
+		nicknameRexExp: regexp.MustCompile(nicknameRegexPatterm, regexp.None),
+		aboutMeRexExp:  regexp.MustCompile(aboutMeRegexPatterm, regexp.None),
 		svc:            svc,
 	}
 }
@@ -123,6 +130,55 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 }
 
 func (h *UserHandler) Edit(ctx *gin.Context) {
+	type EditReq struct {
+		Nickname string `json:"nickname"`
+		Birthday string `json:"birthday"`
+		AboutMe  string `json:"aboutMe"`
+	}
+	var req EditReq
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+
+	isNickName, err := h.nicknameRexExp.MatchString(req.Nickname)
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误……")
+		return
+	}
+	if !isNickName {
+		ctx.String(http.StatusOK, "昵称只能由汉字、字母、数字、下划线组成，长度4~10位")
+		return
+	}
+
+	isAboutMe, err := h.aboutMeRexExp.MatchString(req.AboutMe)
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误……")
+		return
+	}
+	if !isAboutMe {
+		ctx.String(http.StatusOK, "个人介绍不能超过100个字符")
+		return
+	}
+	sess := sessions.Default(ctx)
+	userID := sess.Get("userId")
+	if userID == nil {
+		// 中断，不要往后执行，也就是不要执行后面的业务逻辑
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	user := fmt.Sprintf("%v", userID)
+	err = h.svc.Edit(ctx, domain.UserProfile{
+		User_id:  user,
+		Nickname: req.Nickname,
+		Birthday: req.Birthday,
+		About_me: req.AboutMe,
+	})
+	switch {
+	case err == nil:
+		ctx.String(http.StatusOK, "更新成功")
+	default:
+		ctx.String(http.StatusOK, "系统错误")
+	}
 
 }
 

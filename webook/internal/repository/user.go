@@ -4,6 +4,7 @@ import (
 	"basic-go/webook/internal/domain"
 	"basic-go/webook/internal/repository/dao"
 	"context"
+	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -42,4 +43,14 @@ func (repo *UserRepository) toDomain(u dao.User) domain.User {
 		Email:    u.Email,
 		Password: u.Password,
 	}
+}
+
+func (repo *UserRepository) Edit(ctx *gin.Context, profile domain.UserProfile) error {
+	return repo.dao.Edit(ctx, dao.UserProfile{
+		Id:       profile.Id,
+		User_id:  profile.User_id,
+		Nickname: profile.Nickname,
+		Birthday: profile.Birthday,
+		About_me: profile.About_me,
+	})
 }
