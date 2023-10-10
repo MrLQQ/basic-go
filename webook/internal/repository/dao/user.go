@@ -8,7 +8,10 @@ import (
 	"time"
 )
 
-var ErrDuplicateEmail = errors.New("邮箱冲突")
+var (
+	ErrDuplicateEmail = errors.New("邮箱冲突")
+	ErrRecordNotFound = gorm.ErrRecordNotFound
+)
 
 type UserDao struct {
 	db *gorm.DB

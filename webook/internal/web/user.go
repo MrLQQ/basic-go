@@ -3,6 +3,7 @@ package web
 import (
 	"basic-go/webook/internal/domain"
 	"basic-go/webook/internal/service"
+	"errors"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -78,10 +79,10 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 		Password: req.Password,
 	})
 	// 要判定邮箱冲突
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		ctx.String(http.StatusOK, "注册成功")
-	case service.ErrDuplicateEmail:
+	case errors.Is(err, service.ErrDuplicateEmail):
 		ctx.String(http.StatusOK, "邮箱冲突,请换一个")
 	default:
 		ctx.String(http.StatusOK, "系统错误")
@@ -98,12 +99,14 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 		return
 	}
 	_, err := h.svc.Login(ctx, req.Email, req.Password)
-	if err != nil {
+	switch {
+	case err == nil:
+		ctx.String(http.StatusOK, "登录成功")
+	case errors.Is(err, service.ErrInvalidUserOrPassword):
+		ctx.String(http.StatusOK, "用户名或密码错误")
+	default:
 		ctx.String(http.StatusOK, "系统错误")
-		return
 	}
-	ctx.String(http.StatusOK, "登录成功")
-
 }
 
 func (h *UserHandler) Edit(ctx *gin.Context) {

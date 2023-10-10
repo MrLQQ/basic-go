@@ -6,7 +6,10 @@ import (
 	"context"
 )
 
-var ErrDuplicateEmail = dao.ErrDuplicateEmail
+var (
+	ErrDuplicateEmail = dao.ErrDuplicateEmail
+	ErrUserNotFound   = dao.ErrRecordNotFound
+)
 
 type UserRepository struct {
 	dao *dao.UserDao
