@@ -89,6 +89,20 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 }
 
 func (h *UserHandler) Login(ctx *gin.Context) {
+	type Req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	_, err := h.svc.Login(ctx, req.Email, req.Password)
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	ctx.String(http.StatusOK, "登录成功")
 
 }
 

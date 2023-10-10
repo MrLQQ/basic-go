@@ -24,3 +24,19 @@ func (repo *UserRepository) Create(ctx context.Context, u domain.User) error {
 		Password: u.Password,
 	})
 }
+
+func (repo *UserRepository) FindByEmail(ctx context.Context, email string) (domain.User, error) {
+	u, err := repo.dao.FindByEmail(ctx, email)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return repo.toDomain(u), nil
+}
+
+func (repo *UserRepository) toDomain(u dao.User) domain.User {
+	return domain.User{
+		Id:       u.Id,
+		Email:    u.Email,
+		Password: u.Password,
+	}
+}

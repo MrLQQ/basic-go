@@ -36,6 +36,12 @@ func (dao *UserDao) Insert(ctx context.Context, u User) error {
 	return err
 }
 
+func (dao *UserDao) FindByEmail(ctx context.Context, email string) (User, error) {
+	var u User
+	err := dao.db.WithContext(ctx).Where("email=?", email).First(&u).Error
+	return u, err
+}
+
 type User struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
 	// 设置唯一索引

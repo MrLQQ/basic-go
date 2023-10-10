@@ -28,3 +28,16 @@ func (svc *UserService) Signup(ctx context.Context, u domain.User) error {
 	u.Password = string(hash)
 	return svc.repo.Create(ctx, u)
 }
+
+func (svc *UserService) Login(ctx context.Context, email string, password string) (domain.User, error) {
+	u, err := svc.repo.FindByEmail(ctx, email)
+	if err != nil {
+		return domain.User{}, err
+	}
+	// 检查密码对不对
+	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+	if err != nil {
+		return domain.User{}, err
+	}
+	return u, nil
+}
