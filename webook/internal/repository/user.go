@@ -34,10 +34,10 @@ func (repo *UserRepository) FindByEmail(ctx context.Context, email string) (doma
 	if err != nil {
 		return domain.User{}, err
 	}
-	return repo.toDomain(u), nil
+	return repo.toDomainUser(u), nil
 }
 
-func (repo *UserRepository) toDomain(u dao.User) domain.User {
+func (repo *UserRepository) toDomainUser(u dao.User) domain.User {
 	return domain.User{
 		Id:       u.Id,
 		Email:    u.Email,
@@ -53,4 +53,24 @@ func (repo *UserRepository) Edit(ctx *gin.Context, profile domain.UserProfile) e
 		Birthday: profile.Birthday,
 		About_me: profile.About_me,
 	})
+}
+
+func (repo *UserRepository) Profile(ctx *gin.Context, profile domain.UserProfile) (domain.UserProfile, error) {
+	userProfile, err := repo.dao.Profile(ctx, dao.UserProfile{
+		User_id: profile.User_id,
+	})
+	if err != nil {
+		return domain.UserProfile{}, err
+	}
+	return repo.toDomainProfile(userProfile), nil
+}
+
+func (repo *UserRepository) toDomainProfile(u dao.UserProfile) domain.UserProfile {
+	return domain.UserProfile{
+		Id:       u.Id,
+		User_id:  u.User_id,
+		Nickname: u.Nickname,
+		Birthday: u.Birthday,
+		About_me: u.About_me,
+	}
 }

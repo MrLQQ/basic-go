@@ -183,5 +183,29 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 }
 
 func (h *UserHandler) Profile(ctx *gin.Context) {
-	ctx.String(http.StatusOK, "这是Profile")
+	type Profile struct {
+		Nickname string `json:"nickname"`
+		Birthday string `json:"birthday"`
+		AboutMe  string `json:"aboutMe"`
+	}
+	sess := sessions.Default(ctx)
+	userID := sess.Get("userId")
+	if userID == nil {
+		// 中断，不要往后执行，也就是不要执行后面的业务逻辑
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	user := fmt.Sprintf("%v", userID)
+	profile, err := h.svc.Profile(ctx, domain.UserProfile{
+		User_id: user,
+	})
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+	}
+	userProfile := Profile{
+		Nickname: profile.Nickname,
+		Birthday: profile.Birthday,
+		AboutMe:  profile.About_me,
+	}
+	ctx.JSON(http.StatusOK, userProfile)
 }

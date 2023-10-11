@@ -65,6 +65,11 @@ func (dao *UserDao) Edit(ctx *gin.Context, profile UserProfile) error {
 	}
 }
 
+func (dao *UserDao) Profile(ctx *gin.Context, userprofile UserProfile) (UserProfile, error) {
+	err := dao.db.WithContext(ctx).Where("user_id=?", userprofile.User_id).First(&userprofile).Error
+	return userprofile, err
+}
+
 type User struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
 	// 设置唯一索引

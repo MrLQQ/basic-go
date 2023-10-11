@@ -53,3 +53,7 @@ func (svc *UserService) Login(ctx context.Context, email string, password string
 func (svc *UserService) Edit(ctx *gin.Context, userProfile domain.UserProfile) error {
 	return svc.repo.Edit(ctx, userProfile)
 }
+
+func (svc *UserService) Profile(ctx *gin.Context, userProfile domain.UserProfile) (domain.UserProfile, error) {
+	return svc.repo.Profile(ctx, userProfile)
+}
