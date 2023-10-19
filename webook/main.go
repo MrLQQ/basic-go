@@ -55,6 +55,8 @@ func initWebServer() *gin.Engine {
 		AllowCredentials: true,
 		//业务请求中可以带上的头
 		AllowHeaders: []string{"Content-Type", "authorization"},
+		// 允许前端访问后端响应中带的头部
+		ExposeHeaders: []string{"x-jwt-token"},
 		//AllowMethods:     []string{"POST"},
 		// 哪些来源是允许的
 		AllowOriginFunc: func(origin string) bool {
@@ -69,6 +71,18 @@ func initWebServer() *gin.Engine {
 		println("这是我的middleware……")
 	})
 
+	//useSession(server)
+	useJWT(server)
+
+	return server
+}
+
+func useJWT(server *gin.Engine) {
+	login := &middleware.LoginJWTMiddlewareBuilder{}
+	server.Use(login.CheckLogin())
+}
+
+func useSession(server *gin.Engine) {
 	login := &middleware.LoginMiddlewareBuilder{}
 	// 存储数据的，也就是userId存储在哪里
 	// 直接存cookie
@@ -88,5 +102,4 @@ func initWebServer() *gin.Engine {
 	}
 	// 两个middleware,一个用来初始化session，一个用来登录校验
 	server.Use(sessions.Sessions("ssid", store), login.CheckLogin())
-	return server
 }

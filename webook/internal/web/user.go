@@ -8,7 +8,9 @@ import (
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"net/http"
+	"time"
 )
 
 const emailRegexPatterm = "^[a-zA-Z0-9]+([-_.][a-zA-Z0-9]+)*@[a-zA-Z0-9]+([-_.][a-zA-Z0-9]+)*\\.[a-z]{2,}$"
@@ -40,7 +42,8 @@ func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
 	// 相当于/users/signup
 	ug.POST("/signup", h.SignUp)
 	// 相当于/users/login
-	ug.POST("/login", h.Login)
+	//ug.POST("/login", h.Login)
+	ug.POST("/login", h.LoginJWT)
 	// 相当于/users/edit
 	ug.POST("/edit", h.Edit)
 	// 相当于/users/profile
@@ -92,6 +95,39 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "注册成功")
 	case errors.Is(err, service.ErrDuplicateEmail):
 		ctx.String(http.StatusOK, "邮箱冲突,请换一个")
+	default:
+		ctx.String(http.StatusOK, "系统错误")
+	}
+}
+
+func (h *UserHandler) LoginJWT(ctx *gin.Context) {
+	type Req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	u, err := h.svc.Login(ctx, req.Email, req.Password)
+	switch {
+	case err == nil:
+		uc := UserClaims{
+			Uid: u.Id,
+			RegisteredClaims: jwt.RegisteredClaims{
+				// 1分钟过期
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+			},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS512, uc)
+		tokenStr, err := token.SignedString(JWTkey)
+		if err != nil {
+			ctx.String(http.StatusOK, "系统错误")
+		}
+		ctx.Header("x-jwt-token", tokenStr)
+		ctx.String(http.StatusOK, "登录成功")
+	case errors.Is(err, service.ErrInvalidUserOrPassword):
+		ctx.String(http.StatusOK, "用户名或密码错误")
 	default:
 		ctx.String(http.StatusOK, "系统错误")
 	}
@@ -183,6 +219,7 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 }
 
 func (h *UserHandler) Profile(ctx *gin.Context) {
+	//us := ctx.MustGet("user").(UserClaims)
 	type Profile struct {
 		Nickname string `json:"nickname"`
 		Birthday string `json:"birthday"`
@@ -208,4 +245,11 @@ func (h *UserHandler) Profile(ctx *gin.Context) {
 		AboutMe:  profile.About_me,
 	}
 	ctx.JSON(http.StatusOK, userProfile)
+}
+
+var JWTkey = []byte("jBxoQWRS5L9vYr$mYq5U9d5BRPHfSBAe")
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+	Uid int64
 }
