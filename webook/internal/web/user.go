@@ -166,6 +166,7 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 }
 
 func (h *UserHandler) Edit(ctx *gin.Context) {
+	us := ctx.MustGet("user").(UserClaims)
 	type EditReq struct {
 		Nickname string `json:"nickname"`
 		Birthday string `json:"birthday"`
@@ -195,9 +196,10 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "个人介绍不能超过100个字符")
 		return
 	}
-	sess := sessions.Default(ctx)
-	userID := sess.Get("userId")
-	if userID == nil {
+	//sess := sessions.Default(ctx)
+	//userID := sess.Get("userId")
+	userID := us.Uid
+	if userID == 0 {
 		// 中断，不要往后执行，也就是不要执行后面的业务逻辑
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
@@ -219,15 +221,16 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 }
 
 func (h *UserHandler) Profile(ctx *gin.Context) {
-	//us := ctx.MustGet("user").(UserClaims)
+	us := ctx.MustGet("user").(UserClaims)
 	type Profile struct {
 		Nickname string `json:"nickname"`
 		Birthday string `json:"birthday"`
 		AboutMe  string `json:"aboutMe"`
 	}
-	sess := sessions.Default(ctx)
-	userID := sess.Get("userId")
-	if userID == nil {
+	//sess := sessions.Default(ctx)
+	//userID := sess.Get("userId")
+	userID := us.Uid
+	if userID == 0 {
 		// 中断，不要往后执行，也就是不要执行后面的业务逻辑
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
