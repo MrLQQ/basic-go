@@ -49,6 +49,14 @@ func (m *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+		// 判断请求的UA和用户登录时的UA是否一致
+		if uc.UserAgent != ctx.GetHeader("User-Agent") {
+			// 后期监控告警的时候，这里需要埋点
+			// 能够进来找个分支的大概率是攻击者，如果浏览器升级也可能进入到该分支
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
 		expiresTime := uc.ExpiresAt
 		if expiresTime.Before(time.Now()) {
 			// 过期了
