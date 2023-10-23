@@ -6,9 +6,12 @@ import (
 	"basic-go/webook/internal/service"
 	"basic-go/webook/internal/web"
 	"basic-go/webook/internal/web/middleware"
+	"basic-go/webook/pkg/ginx/middleware/ratelimit"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/redis"
+	"github.com/gin-contrib/sessions/cookie"
+	"github.com/redis/go-redis/v9"
+	//"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -47,6 +50,7 @@ func initDB() *gorm.DB {
 
 func initWebServer() *gin.Engine {
 	server := gin.Default()
+
 	server.Use(cors.New(cors.Config{
 		//AllowAllOrigins: true,
 		//允许的请求源
@@ -71,6 +75,11 @@ func initWebServer() *gin.Engine {
 		println("这是我的middleware……")
 	})
 
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+	// 引入限流插件，当前限流规则，100QPS
+	server.Use(ratelimit.NewBuilder(redisClient, time.Second, 100).Build())
 	//useSession(server)
 	useJWT(server)
 
@@ -86,7 +95,7 @@ func useSession(server *gin.Engine) {
 	login := &middleware.LoginMiddlewareBuilder{}
 	// 存储数据的，也就是userId存储在哪里
 	// 直接存cookie
-	//store := cookie.NewStore([]byte("secret"))
+	store := cookie.NewStore([]byte("secret"))
 	// 基于内存的实现
 	//store := memstore.NewStore([]byte("jBxoQWRS5L9vYr$mYq5U9d5BRPHfSBAe"), []byte("O@Gpunh7SPVuLYT^WYBaxDjFUep4THgM"))
 	// 基于redis实现:
@@ -94,12 +103,12 @@ func useSession(server *gin.Engine) {
 	//		第二个参数是tcp，不太可能是udp
 	//		第三、四个参数是连接信息和密码
 	//		第五、六个参数是两个key
-	store, err := redis.NewStore(16, "tcp", "localhost:6379", "",
-		[]byte("jBxoQWRS5L9vYr$mYq5U9d5BRPHfSBAe"),
-		[]byte("O@Gpunh7SPVuLYT^WYBaxDjFUep4THgM"))
-	if err != nil {
-		panic(err)
-	}
+	//store, err := redis.NewStore(16, "tcp", "localhost:6379", "",
+	//	[]byte("jBxoQWRS5L9vYr$mYq5U9d5BRPHfSBAe"),
+	//	[]byte("O@Gpunh7SPVuLYT^WYBaxDjFUep4THgM"))
+	//if err != nil {
+	//	panic(err)
+	//}
 	// 两个middleware,一个用来初始化session，一个用来登录校验
 	server.Use(sessions.Sessions("ssid", store), login.CheckLogin())
 }
