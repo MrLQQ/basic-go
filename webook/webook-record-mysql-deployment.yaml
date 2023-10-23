@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webook-record-mysql
+  labels:
+    app: webook-record-mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webook-record-mysql
+  template:
+    metadata:
+      name: webook-record-mysql
+      labels:
+        app: webook-record-mysql
+    spec:
+      containers:
+        - name: webook-record-mysql
+          image: mysql:8.0
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: root
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+#            代表MySQL的存储目录，默认是这个，除非自己手动更改了配置文件
+            - mountPath: /var/lib/mysql
+              name: mysql-storage
+      restartPolicy: Always
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+#            PVC 就是 persistent Volume Claim
+            claimName: webook-mysql-pvc
