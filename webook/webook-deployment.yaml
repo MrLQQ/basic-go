@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webook-record-service
+spec:
+#  3个副本
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webook-record
+  template:
+    metadata:
+      labels:
+#        找个webook-record 一定要和前面的matchLabels一致
+        app: webook-record
+#        这个是Deployment管理的pod的模板
+    spec:
+#      Pod里面运行的所有的container
+      containers:
+        - name: webook-record
+          image: mrlqq/webook:v0.0.1
+          ports:
+            - containerPort: 8080

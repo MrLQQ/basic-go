@@ -11,6 +11,8 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/redis/go-redis/v9"
+	"net/http"
+
 	//"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
@@ -21,9 +23,13 @@ import (
 
 func main() {
 
-	db := initDB()
-	server := initWebServer()
-	initUser(db, server)
+	//db := initDB()
+	//server := initWebServer()
+	//initUser(db, server)
+	server := gin.Default()
+	server.GET("/hello", func(ctx *gin.Context) {
+		ctx.String(http.StatusOK, "hello,启动成功")
+	})
 	server.Run(":8080")
 }
 
