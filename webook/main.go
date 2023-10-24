@@ -1,6 +1,7 @@
 package main
 
 import (
+	"basic-go/webook/config"
 	"basic-go/webook/internal/repository"
 	"basic-go/webook/internal/repository/dao"
 	"basic-go/webook/internal/service"
@@ -23,10 +24,10 @@ import (
 
 func main() {
 
-	//db := initDB()
-	//server := initWebServer()
-	//initUser(db, server)
-	server := gin.Default()
+	db := initDB()
+	server := initWebServer()
+	initUser(db, server)
+	//server := gin.Default()
 	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello,启动成功")
 	})
@@ -42,7 +43,7 @@ func initUser(db *gorm.DB, server *gin.Engine) {
 }
 
 func initDB() *gorm.DB {
-	db, err := gorm.Open(mysql.Open("root:root@tcp(localhost:13316)/webook"))
+	db, err := gorm.Open(mysql.Open(config.Config.DB.DSN))
 	if err != nil {
 		panic(err)
 	}
@@ -82,7 +83,7 @@ func initWebServer() *gin.Engine {
 	})
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: config.Config.Redis.Addr,
 	})
 	// 引入限流插件，当前限流规则，100QPS
 	server.Use(ratelimit.NewBuilder(redisClient, time.Second, 100).Build())
