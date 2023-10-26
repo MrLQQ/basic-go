@@ -23,7 +23,7 @@ spec:
               value: root
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 3306
+            - containerPort: 3308
           volumeMounts:
 #            代表MySQL的存储目录，默认是这个，除非自己手动更改了配置文件
             - mountPath: /var/lib/mysql

@@ -20,6 +20,6 @@ spec:
           image: redis:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 6379
+            - containerPort: 6380
       restartPolicy: Always
       
