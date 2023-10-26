@@ -34,7 +34,7 @@ func (s Service) Send(ctx context.Context, tplId string, args []string, number .
 			continue
 		}
 		status := *statusPtr
-		if status.Code == nil || *(status.Code) != "Dk" {
+		if status.Code == nil || *(status.Code) != "Ok" {
 			// 发送失败
 			return fmt.Errorf("短息发送失败 code:%s, msg:%s", *status.Code, *status.Message)
 
