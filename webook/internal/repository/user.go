@@ -2,6 +2,7 @@ package repository
 
 import (
 	"basic-go/webook/internal/domain"
+	"basic-go/webook/internal/repository/cache"
 	"basic-go/webook/internal/repository/dao"
 	"context"
 	"github.com/gin-gonic/gin"
@@ -13,12 +14,14 @@ var (
 )
 
 type UserRepository struct {
-	dao *dao.UserDao
+	dao   *dao.UserDao
+	cache *cache.UserCache
 }
 
-func NewUserRepository(dao *dao.UserDao) *UserRepository {
+func NewUserRepository(dao *dao.UserDao, c *cache.UserCache) *UserRepository {
 	return &UserRepository{
-		dao: dao,
+		dao:   dao,
+		cache: c,
 	}
 }
 
@@ -56,13 +59,20 @@ func (repo *UserRepository) Edit(ctx *gin.Context, profile domain.UserProfile) e
 }
 
 func (repo *UserRepository) Profile(ctx *gin.Context, profile domain.UserProfile) (domain.UserProfile, error) {
-	userProfile, err := repo.dao.Profile(ctx, dao.UserProfile{
+	du, err := repo.cache.Get(ctx, profile.User_id)
+	if err == nil {
+		return du, err
+	}
+
+	u, err := repo.dao.Profile(ctx, dao.UserProfile{
 		User_id: profile.User_id,
 	})
 	if err != nil {
 		return domain.UserProfile{}, err
 	}
-	return repo.toDomainProfile(userProfile), nil
+	du = repo.toDomainProfile(u)
+	err = repo.cache.Set(ctx, du)
+	return du, nil
 }
 
 func (repo *UserRepository) toDomainProfile(u dao.UserProfile) domain.UserProfile {

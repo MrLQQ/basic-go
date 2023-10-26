@@ -3,11 +3,11 @@ package main
 import (
 	"basic-go/webook/config"
 	"basic-go/webook/internal/repository"
+	"basic-go/webook/internal/repository/cache"
 	"basic-go/webook/internal/repository/dao"
 	"basic-go/webook/internal/service"
 	"basic-go/webook/internal/web"
 	"basic-go/webook/internal/web/middleware"
-	"basic-go/webook/pkg/ginx/middleware/ratelimit"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -36,7 +36,11 @@ func main() {
 
 func initUser(db *gorm.DB, server *gin.Engine) {
 	ud := dao.NewUserDao(db)
-	ur := repository.NewUserRepository(ud)
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: config.Config.Redis.Addr,
+	})
+	userCache := cache.NewUserCache(redisClient)
+	ur := repository.NewUserRepository(ud, userCache)
 	us := service.NewUserService(ur)
 	hdl := web.NewUserHandler(us)
 	hdl.RegisterRoutes(server)
@@ -82,11 +86,11 @@ func initWebServer() *gin.Engine {
 		println("这是我的middleware……")
 	})
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: config.Config.Redis.Addr,
-	})
-	// 引入限流插件，当前限流规则，100QPS
-	server.Use(ratelimit.NewBuilder(redisClient, time.Second, 100).Build())
+	//redisClient := redis.NewClient(&redis.Options{
+	//	Addr: config.Config.Redis.Addr,
+	//})
+	//// 引入限流插件，当前限流规则，100QPS
+	//server.Use(ratelimit.NewBuilder(redisClient, time.Second, 100).Build())
 	//useSession(server)
 	useJWT(server)
 

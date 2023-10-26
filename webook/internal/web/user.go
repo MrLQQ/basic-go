@@ -116,8 +116,8 @@ func (h *UserHandler) LoginJWT(ctx *gin.Context) {
 			Uid:       u.Id,
 			UserAgent: ctx.GetHeader("User-Agent"),
 			RegisteredClaims: jwt.RegisteredClaims{
-				// 1分钟过期
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+				// 30分钟过期
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 30)),
 			},
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS512, uc)
@@ -151,7 +151,7 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 		sess.Set("userId", u.Id)
 		sess.Options(sessions.Options{
 			// 有效期 15分钟
-			MaxAge: 30, // 30秒
+			MaxAge: 900,
 		})
 		err := sess.Save()
 		if err != nil {

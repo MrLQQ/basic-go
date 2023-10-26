@@ -65,7 +65,7 @@ func (m *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 		}
 		// （为了测试当前设置token过期时间为1分钟）若剩余过期时间<50s就刷新
 		if expiresTime.Sub(time.Now()) < time.Second*50 {
-			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute))
+			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute * 30))
 			tokenStr, err = token.SignedString(web.JWTkey)
 			ctx.Header("x-jwt-token", tokenStr)
 			if err != nil {
