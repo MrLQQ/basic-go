@@ -2,15 +2,15 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 	"time"
 )
 
 var (
-	ErrDuplicateEmail = errors.New("邮箱冲突")
+	ErrDuplicateUser  = errors.New("用户冲突")
 	ErrRecordNotFound = gorm.ErrRecordNotFound
 )
 
@@ -34,7 +34,7 @@ func (dao *UserDao) Insert(ctx context.Context, u User) error {
 		const duplicateErr uint16 = 1062
 		if me.Number == duplicateErr {
 			// 用户冲突，邮箱冲突
-			return ErrDuplicateEmail
+			return ErrDuplicateUser
 		}
 	}
 	return err
@@ -46,7 +46,7 @@ func (dao *UserDao) FindByEmail(ctx context.Context, email string) (User, error)
 	return u, err
 }
 
-func (dao *UserDao) Edit(ctx *gin.Context, profile UserProfile) error {
+func (dao *UserDao) Edit(ctx context.Context, profile UserProfile) error {
 	now := time.Now().UnixMilli()
 	profile.Ctime = now
 	profile.Utime = now
@@ -65,15 +65,23 @@ func (dao *UserDao) Edit(ctx *gin.Context, profile UserProfile) error {
 	}
 }
 
-func (dao *UserDao) Profile(ctx *gin.Context, userprofile UserProfile) (UserProfile, error) {
+func (dao *UserDao) Profile(ctx context.Context, userprofile UserProfile) (UserProfile, error) {
 	err := dao.db.WithContext(ctx).Where("user_id=?", userprofile.User_id).First(&userprofile).Error
 	return userprofile, err
 }
 
+func (dao *UserDao) FindByPhone(ctx context.Context, phone string) (User, error) {
+	var u User
+	err := dao.db.WithContext(ctx).First(&u, "phone = ?", phone).Error
+	return u, err
+}
+
 type User struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
-	// 设置唯一索引
-	Email    string `gorm:"unique"`
+	// gorm:"unique"  设置唯一索引
+	// sql.NullString 表示可以为null的列
+	Email    sql.NullString `gorm:"unique"`
+	Phone    sql.NullString `gorm:"unique"`
 	Password string
 	// 创建时间
 	Ctime int64

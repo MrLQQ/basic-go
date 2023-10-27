@@ -6,6 +6,10 @@ import router from "next/router";
 const onFinish = (values: any) => {
     axios.post("/users/login_sms", values)
         .then((res) => {
+            console.log("输出res")
+            console.log(res)
+            console.log("输出res.data")
+            console.log(res.data)
             if(res.status != 200) {
                 alert(res.statusText);
                 return
@@ -15,7 +19,7 @@ const onFinish = (values: any) => {
                 router.push('/users/profile')
                 return;
             }
-            alert(res.data.msg)
+            alert(res.data)
         }).catch((err) => {
         alert(err);
     })

@@ -5,12 +5,12 @@ import (
 	"basic-go/webook/internal/repository/cache"
 	"basic-go/webook/internal/repository/dao"
 	"context"
-	"github.com/gin-gonic/gin"
+	"database/sql"
 )
 
 var (
-	ErrDuplicateEmail = dao.ErrDuplicateEmail
-	ErrUserNotFound   = dao.ErrRecordNotFound
+	ErrDuplicateUser = dao.ErrDuplicateUser
+	ErrUserNotFound  = dao.ErrRecordNotFound
 )
 
 type UserRepository struct {
@@ -26,10 +26,7 @@ func NewUserRepository(dao *dao.UserDao, c *cache.UserCache) *UserRepository {
 }
 
 func (repo *UserRepository) Create(ctx context.Context, u domain.User) error {
-	return repo.dao.Insert(ctx, dao.User{
-		Email:    u.Email,
-		Password: u.Password,
-	})
+	return repo.dao.Insert(ctx, repo.toEntity(u))
 }
 
 func (repo *UserRepository) FindByEmail(ctx context.Context, email string) (domain.User, error) {
@@ -43,12 +40,21 @@ func (repo *UserRepository) FindByEmail(ctx context.Context, email string) (doma
 func (repo *UserRepository) toDomainUser(u dao.User) domain.User {
 	return domain.User{
 		Id:       u.Id,
-		Email:    u.Email,
+		Email:    u.Email.String,
+		Phone:    u.Phone.String,
+		Password: u.Password,
+	}
+}
+func (repo *UserRepository) toEntity(u domain.User) dao.User {
+	return dao.User{
+		Id:       u.Id,
+		Email:    sql.NullString{String: u.Email, Valid: u.Email != ""},
+		Phone:    sql.NullString{String: u.Phone, Valid: u.Phone != ""},
 		Password: u.Password,
 	}
 }
 
-func (repo *UserRepository) Edit(ctx *gin.Context, profile domain.UserProfile) error {
+func (repo *UserRepository) Edit(ctx context.Context, profile domain.UserProfile) error {
 	return repo.dao.Edit(ctx, dao.UserProfile{
 		Id:       profile.Id,
 		User_id:  profile.User_id,
@@ -58,7 +64,7 @@ func (repo *UserRepository) Edit(ctx *gin.Context, profile domain.UserProfile) e
 	})
 }
 
-func (repo *UserRepository) Profile(ctx *gin.Context, profile domain.UserProfile) (domain.UserProfile, error) {
+func (repo *UserRepository) Profile(ctx context.Context, profile domain.UserProfile) (domain.UserProfile, error) {
 	du, err := repo.cache.Get(ctx, profile.User_id)
 	if err == nil {
 		return du, err
@@ -83,4 +89,12 @@ func (repo *UserRepository) toDomainProfile(u dao.UserProfile) domain.UserProfil
 		Birthday: u.Birthday,
 		About_me: u.About_me,
 	}
+}
+
+func (repo *UserRepository) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
+	u, err := repo.dao.FindByPhone(ctx, phone)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return repo.toDomainUser(u), nil
 }
