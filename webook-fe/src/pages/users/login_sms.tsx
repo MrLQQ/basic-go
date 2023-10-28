@@ -19,7 +19,7 @@ const onFinish = (values: any) => {
                 router.push('/users/profile')
                 return;
             }
-            alert(res.data)
+            alert(res.data.msg)
         }).catch((err) => {
         alert(err);
     })

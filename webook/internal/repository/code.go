@@ -7,20 +7,40 @@ import (
 
 var ErrCodeVerifyTooMany = cache.ErrCodeVerifyTooMany
 
-type CodeRepository struct {
-	cache *cache.CodeCache
+// CodeRedisRepository ---------------------------------------使用Redis缓存实现--------------------------------------------------//
+type CodeRedisRepository struct {
+	cache *cache.CodeRedisCache
 }
 
-func NewCodeRepository(c *cache.CodeCache) *CodeRepository {
-	return &CodeRepository{
+func NewCodeRedisRepository(c *cache.CodeRedisCache) *CodeRedisRepository {
+	return &CodeRedisRepository{
 		cache: c,
 	}
 }
 
-func (c *CodeRepository) Set(ctx context.Context, biz, phone, code string) error {
+func (c *CodeRedisRepository) Set(ctx context.Context, biz, phone, code string) error {
 	return c.cache.Set(ctx, biz, phone, code)
 }
 
-func (c *CodeRepository) Verify(ctx context.Context, biz, phone, inCode string) (bool, error) {
+func (c *CodeRedisRepository) Verify(ctx context.Context, biz, phone, inCode string) (bool, error) {
+	return c.cache.Verify(ctx, biz, phone, inCode)
+}
+
+// CodeCacheRepository ---------------------------------------使用本地缓存实现--------------------------------------------------//
+type CodeCacheRepository struct {
+	cache *cache.CodeCache
+}
+
+func NewCodeCacheRepository(c *cache.CodeCache) *CodeCacheRepository {
+	return &CodeCacheRepository{
+		cache: c,
+	}
+}
+
+func (c *CodeCacheRepository) Set(ctx context.Context, biz, phone, code string) error {
+	return c.cache.Set(ctx, biz, phone, code)
+}
+
+func (c *CodeCacheRepository) Verify(ctx context.Context, biz, phone, inCode string) (bool, error) {
 	return c.cache.Verify(ctx, biz, phone, inCode)
 }

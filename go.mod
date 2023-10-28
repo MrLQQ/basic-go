@@ -3,6 +3,7 @@ module basic-go
 go 1.21
 
 require (
+	github.com/coocood/freecache v1.2.4
 	github.com/dlclark/regexp2 v1.10.0
 	github.com/ecodeclub/ekit v0.0.7
 	github.com/gin-contrib/cors v1.4.0

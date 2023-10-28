@@ -10,6 +10,7 @@ import (
 	"basic-go/webook/internal/service/sms/localsms"
 	"basic-go/webook/internal/web"
 	"basic-go/webook/internal/web/middleware"
+	"github.com/coocood/freecache"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -26,13 +27,19 @@ import (
 )
 
 func main() {
+	// redis缓存
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: config.Config.Redis.Addr,
 	})
+	// 本地缓存
+	freeCache := freecache.NewCache(100 * 1024 * 1024)
 	db := initDB()
 	server := initWebServer()
-	codeSvc := initCodeSvc(redisClient)
-	initUser(db, redisClient, codeSvc, server)
+	// 使用redis缓存处理验证码消息
+	//codeSvc := initCodeRedisSvc(redisClient)
+	// 使用本地缓存处理验证码消息
+	codeSvc := initCodeSvc(freeCache)
+	initUser(db, redisClient, *codeSvc, server)
 	//server := gin.Default()
 	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello,启动成功")
@@ -40,19 +47,33 @@ func main() {
 	server.Run(":8080")
 }
 
-func initUser(db *gorm.DB, redisClient redis.Cmdable, codeSvc *service.CodeService, server *gin.Engine) {
+func initUser(db *gorm.DB, redisClient redis.Cmdable, codeSvc service.CodeCacheService, server *gin.Engine) {
 	ud := dao.NewUserDao(db)
 	userCache := cache.NewUserCache(redisClient)
 	ur := repository.NewUserRepository(ud, userCache)
 	us := service.NewUserService(ur)
-	hdl := web.NewUserHandler(us, codeSvc)
+	hdl := web.NewUserHandler(us, &codeSvc)
 	hdl.RegisterRoutes(server)
 }
 
-func initCodeSvc(redisClient redis.Cmdable) *service.CodeService {
-	cc := cache.NewCodeCache(redisClient)
-	crepo := repository.NewCodeRepository(cc)
-	return service.NewCodeService(crepo, initMemorySms())
+/*
+*
+使用redis缓存实现
+*/
+func initCodeRedisSvc(redisClient redis.Cmdable) *service.CodeRedisService {
+	crc := cache.NewCodeRedisCache(redisClient)
+	crepo := repository.NewCodeRedisRepository(crc)
+	return service.NewCodeRedisService(crepo, initMemorySms())
+}
+
+/*
+*
+使用本地缓存实现
+*/
+func initCodeSvc(freeCache *freecache.Cache) *service.CodeCacheService {
+	cc := cache.NewCodeCache(freeCache)
+	crepo := repository.NewCodeCacheRepository(cc)
+	return service.NewCodeCacheService(crepo, initMemorySms())
 }
 
 func initMemorySms() sms.Service {
