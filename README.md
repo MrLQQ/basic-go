@@ -40,6 +40,14 @@
 
 详情点击：[第三周作业明细](homework/week3/README.md)
 
+## 第四周 用本地缓存来替换 Redis
+> 不使用 Redis 作为缓存，提供一个基于本地缓存实现的 cache.CodeCache。
+> * 定义一个 CodeCache 接口，将现在的 CodeCache 改名为 CodeRedisCache。
+> * 提供一个基于本地缓存的 CodeCache 实现。你可以自主决定用什么本地缓存，在这个过程注意体会技术选型要考虑的点。
+> * 保证单机并发安全，也就是你可以假定这个实现只用在开发环境，或者单机环境下。
+
+详情点击：[第四周作业明细](homework/week4/README.md)
+
 <span id="point"></span>
 ## 知识点整理
 * [defer实现机制](KnowledgeBase/defer实现机制.md)
