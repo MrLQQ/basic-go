@@ -46,7 +46,7 @@ func (c *RedisUserCache) key(userId string) string {
 	return fmt.Sprintf("user:info:%d", userId)
 }
 
-func NewUserCache(cmd redis.Cmdable) UserCache {
+func NewRedisUserCache(cmd redis.Cmdable) UserCache {
 	return &RedisUserCache{
 		cmd:        cmd,
 		expiration: time.Minute * 15,
