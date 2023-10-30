@@ -26,11 +26,11 @@ type UserHandler struct {
 	passwordRexExp *regexp.Regexp
 	nicknameRexExp *regexp.Regexp
 	aboutMeRexExp  *regexp.Regexp
-	svc            *service.UserService
-	codeSvc        *service.CodeCacheService
+	svc            service.UserService
+	codeSvc        service.CodeService
 }
 
-func NewUserHandler(svc *service.UserService, codeSvc *service.CodeCacheService) *UserHandler {
+func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserHandler {
 	return &UserHandler{
 		emailRexRxp:    regexp.MustCompile(emailRegexPatterm, regexp.None),
 		passwordRexExp: regexp.MustCompile(passwordRegexPatterm, regexp.None),

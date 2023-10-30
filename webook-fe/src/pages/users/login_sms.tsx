@@ -15,11 +15,11 @@ const onFinish = (values: any) => {
                 return
             }
 
+            alert(res.data.msg)
             if (res.data.code == 0) {
                 router.push('/users/profile')
                 return;
             }
-            alert(res.data.msg)
         }).catch((err) => {
         alert(err);
     })

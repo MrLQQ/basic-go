@@ -22,18 +22,23 @@ var (
 	ErrNotFount          = freecache.ErrNotFound
 )
 
-// CodeRedisCache ----------------------------------------------使用redis缓存实现--------------------------------------------//
-type CodeRedisCache struct {
+type CodeCache interface {
+	Set(ctx context.Context, biz, phone, code string) error
+	Verify(ctx context.Context, biz, phone, inCode string) (bool, error)
+}
+
+// RedisCodeCache ----------------------------------------------使用redis缓存实现--------------------------------------------//
+type RedisCodeCache struct {
 	cmd redis.Cmdable
 }
 
-func NewCodeRedisCache(cmd redis.Cmdable) *CodeRedisCache {
-	return &CodeRedisCache{
+func NewRedisCodeCache(cmd redis.Cmdable) CodeCache {
+	return &RedisCodeCache{
 		cmd: cmd,
 	}
 }
 
-func (c *CodeRedisCache) Set(ctx context.Context, biz, phone, code string) error {
+func (c *RedisCodeCache) Set(ctx context.Context, biz, phone, code string) error {
 	res, err := c.cmd.Eval(ctx, luaSetCode, []string{c.Key(biz, phone)}, code).Int()
 	if err != nil {
 		// 调用redis出了问题
@@ -49,7 +54,7 @@ func (c *CodeRedisCache) Set(ctx context.Context, biz, phone, code string) error
 	}
 }
 
-func (c *CodeRedisCache) Verify(ctx context.Context, biz, phone, inCode string) (bool, error) {
+func (c *RedisCodeCache) Verify(ctx context.Context, biz, phone, inCode string) (bool, error) {
 	res, err := c.cmd.Eval(ctx, luaVerifyCode, []string{c.Key(biz, phone)}, inCode).Int()
 	if err != nil {
 		// 调用redis出了问题
@@ -68,22 +73,22 @@ func (c *CodeRedisCache) Verify(ctx context.Context, biz, phone, inCode string) 
 	}
 }
 
-func (c *CodeRedisCache) Key(biz, phone string) string {
+func (c *RedisCodeCache) Key(biz, phone string) string {
 	return fmt.Sprintf("phone_code:%s:%s", biz, phone)
 }
 
-// CodeCache ---------------------------------------使用本地缓存实现(freeCache)--------------------------------------//
-type CodeCache struct {
+// MemoryCodeCache ---------------------------------------使用本地缓存实现(freeCache)--------------------------------------//
+type MemoryCodeCache struct {
 	cc *freecache.Cache
 }
 
-func NewCodeCache(cache *freecache.Cache) *CodeCache {
-	return &CodeCache{
+func NewMemoryCodeCache(cache *freecache.Cache) CodeCache {
+	return &MemoryCodeCache{
 		cc: cache,
 	}
 }
 
-func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
+func (c *MemoryCodeCache) Set(ctx context.Context, biz, phone, code string) error {
 	res, err := c.setWithCache(c.Key(biz, phone), code)
 	if err != nil {
 		// 调用redis出了问题
@@ -99,7 +104,7 @@ func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
 	}
 }
 
-func (c *CodeCache) Verify(ctx context.Context, biz, phone, inCode string) (bool, error) {
+func (c *MemoryCodeCache) Verify(ctx context.Context, biz, phone, inCode string) (bool, error) {
 	res, err := c.VerifyWithCache(c.Key(biz, phone), inCode)
 	if err != nil {
 		// 调用redis出了问题
@@ -118,11 +123,11 @@ func (c *CodeCache) Verify(ctx context.Context, biz, phone, inCode string) (bool
 	}
 }
 
-func (c *CodeCache) Key(biz, phone string) string {
+func (c *MemoryCodeCache) Key(biz, phone string) string {
 	return fmt.Sprintf("phone_code:%s:%s", biz, phone)
 }
 
-func (c *CodeCache) setWithCache(key, code string) (int32, error) {
+func (c *MemoryCodeCache) setWithCache(key, code string) (int32, error) {
 	var lock sync.Mutex
 	lock.Lock()
 	defer lock.Unlock()
@@ -143,7 +148,7 @@ func (c *CodeCache) setWithCache(key, code string) (int32, error) {
 	}
 }
 
-func (c *CodeCache) VerifyWithCache(key, incode string) (int32, error) {
+func (c *MemoryCodeCache) VerifyWithCache(key, incode string) (int32, error) {
 	var lock sync.Mutex
 	lock.Lock()
 	defer lock.Unlock()

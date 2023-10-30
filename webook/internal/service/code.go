@@ -12,19 +12,18 @@ import (
 
 var ErrCodeSendTooMany = cache.ErrCodeSendTooMany
 
-type ICodeService interface {
+type CodeService interface {
 	Verify(ctx context.Context, biz, phone, inputCode string) (bool, error)
 	Send(ctx context.Context, biz, phone string) error
 }
 
 // CodeRedisService ---------------------------------------使用Redis缓存实现--------------------------------------------------//
 type CodeRedisService struct {
-	ICodeService
-	repo *repository.CodeRedisRepository
+	repo repository.CodeRepository
 	sms  sms.Service
 }
 
-func NewCodeRedisService(repo *repository.CodeRedisRepository, smsSve sms.Service) *CodeRedisService {
+func NewCodeRedisService(repo repository.CodeRepository, smsSve sms.Service) CodeService {
 	return &CodeRedisService{
 		repo: repo,
 		sms:  smsSve,
@@ -60,12 +59,11 @@ func (svc *CodeRedisService) generate() string {
 
 // CodeCacheService --------------------------------------------本地缓存实现-----------------------------------------------//
 type CodeCacheService struct {
-	ICodeService
-	repo *repository.CodeCacheRepository
+	repo repository.CodeRepository
 	sms  sms.Service
 }
 
-func NewCodeCacheService(repo *repository.CodeCacheRepository, smsSve sms.Service) *CodeCacheService {
+func NewCodeCacheService(repo repository.CodeRepository, smsSve sms.Service) CodeService {
 	return &CodeCacheService{
 		repo: repo,
 		sms:  smsSve,

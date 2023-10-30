@@ -11,12 +11,17 @@ import (
 
 var ErrKeyNotExist = redis.Nil
 
-type UserCache struct {
+type UserCache interface {
+	Get(ctx context.Context, userId string) (domain.UserProfile, error)
+	Set(ctx context.Context, du domain.UserProfile) error
+}
+
+type RedisUserCache struct {
 	cmd        redis.Cmdable
 	expiration time.Duration
 }
 
-func (c *UserCache) Get(ctx context.Context, userId string) (domain.UserProfile, error) {
+func (c *RedisUserCache) Get(ctx context.Context, userId string) (domain.UserProfile, error) {
 	key := c.key(userId)
 	// 假定这个地方使用json序列化，然后可以使用给反序列化data
 	data, err := c.cmd.Get(ctx, key).Result()
@@ -28,7 +33,7 @@ func (c *UserCache) Get(ctx context.Context, userId string) (domain.UserProfile,
 	return u, err
 }
 
-func (c *UserCache) Set(ctx context.Context, du domain.UserProfile) error {
+func (c *RedisUserCache) Set(ctx context.Context, du domain.UserProfile) error {
 	key := c.key(du.User_id)
 	data, err := json.Marshal(du)
 	if err != nil {
@@ -37,12 +42,12 @@ func (c *UserCache) Set(ctx context.Context, du domain.UserProfile) error {
 	return c.cmd.Set(ctx, key, data, c.expiration).Err()
 }
 
-func (c *UserCache) key(userId string) string {
+func (c *RedisUserCache) key(userId string) string {
 	return fmt.Sprintf("user:info:%d", userId)
 }
 
-func NewUserCache(cmd redis.Cmdable) *UserCache {
-	return &UserCache{
+func NewUserCache(cmd redis.Cmdable) UserCache {
+	return &RedisUserCache{
 		cmd:        cmd,
 		expiration: time.Minute * 15,
 	}

@@ -15,15 +15,15 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"net/http"
+	"strings"
+	"time"
 
 	//"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-	"strings"
-	"time"
 )
 
 func main() {
@@ -32,27 +32,26 @@ func main() {
 		Addr: config.Config.Redis.Addr,
 	})
 	// 本地缓存
-	freeCache := freecache.NewCache(100 * 1024 * 1024)
+	//freeCache := freecache.NewCache(100 * 1024 * 1024)
 	db := initDB()
 	server := initWebServer()
 	// 使用redis缓存处理验证码消息
-	//codeSvc := initCodeRedisSvc(redisClient)
+	codeSvc := initCodeRedisSvc(redisClient)
 	// 使用本地缓存处理验证码消息
-	codeSvc := initCodeSvc(freeCache)
-	initUser(db, redisClient, *codeSvc, server)
-	//server := gin.Default()
+	//codeSvc := initCodeSvc(freeCache)
+	initUser(db, redisClient, codeSvc, server)
 	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello,启动成功")
 	})
 	server.Run(":8080")
 }
 
-func initUser(db *gorm.DB, redisClient redis.Cmdable, codeSvc service.CodeCacheService, server *gin.Engine) {
-	ud := dao.NewUserDao(db)
+func initUser(db *gorm.DB, redisClient redis.Cmdable, codeSvc service.CodeService, server *gin.Engine) {
+	ud := dao.NewGORMUserDao(db)
 	userCache := cache.NewUserCache(redisClient)
-	ur := repository.NewUserRepository(ud, userCache)
-	us := service.NewUserService(ur)
-	hdl := web.NewUserHandler(us, &codeSvc)
+	ur := repository.NewCacheUserRepository(ud, userCache)
+	us := service.NewuserService(ur)
+	hdl := web.NewUserHandler(us, codeSvc)
 	hdl.RegisterRoutes(server)
 }
 
@@ -60,9 +59,9 @@ func initUser(db *gorm.DB, redisClient redis.Cmdable, codeSvc service.CodeCacheS
 *
 使用redis缓存实现
 */
-func initCodeRedisSvc(redisClient redis.Cmdable) *service.CodeRedisService {
-	crc := cache.NewCodeRedisCache(redisClient)
-	crepo := repository.NewCodeRedisRepository(crc)
+func initCodeRedisSvc(redisClient redis.Cmdable) service.CodeService {
+	crc := cache.NewRedisCodeCache(redisClient)
+	crepo := repository.NewCacheCodeRepository(crc)
 	return service.NewCodeRedisService(crepo, initMemorySms())
 }
 
@@ -70,9 +69,9 @@ func initCodeRedisSvc(redisClient redis.Cmdable) *service.CodeRedisService {
 *
 使用本地缓存实现
 */
-func initCodeSvc(freeCache *freecache.Cache) *service.CodeCacheService {
-	cc := cache.NewCodeCache(freeCache)
-	crepo := repository.NewCodeCacheRepository(cc)
+func initCodeSvc(freeCache *freecache.Cache) service.CodeService {
+	cc := cache.NewMemoryCodeCache(freeCache)
+	crepo := repository.NewCacheCodeRepository(cc)
 	return service.NewCodeCacheService(crepo, initMemorySms())
 }
 
