@@ -125,26 +125,26 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 	}
 	isEmail, err := h.emailRexRxp.MatchString(req.Email)
 	if err != nil {
-		ctx.String(http.StatusOK, "系统错误……")
+		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 		return
 	}
 	if !isEmail {
-		ctx.String(http.StatusOK, "邮箱格式非法")
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "邮箱格式非法"})
 		return
 	}
 
 	isPassword, err := h.passwordRexExp.MatchString(req.Password)
 
 	if err != nil {
-		ctx.String(http.StatusOK, "系统错误……")
+		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 		return
 	}
 	if !isPassword {
-		ctx.String(http.StatusOK, "密码格式非法：密码必须要同时包含字母和数字，位数1~15")
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "密码格式非法：密码必须要同时包含字母和数字，位数1~15"})
 		return
 	}
 	if req.Password != req.ConfirmPassword {
-		ctx.String(http.StatusOK, "两次密码不一致")
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "两次密码不一致"})
 		return
 	}
 
@@ -155,7 +155,7 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 	// 要判定邮箱冲突
 	switch {
 	case err == nil:
-		ctx.JSON(http.StatusOK, Result{Msg: "注册成功"})
+		ctx.JSON(http.StatusOK, Result{Code: 0, Msg: "注册成功"})
 	case errors.Is(err, service.ErrDuplicateUser):
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "邮箱冲突,请换一个"})
 	default:
