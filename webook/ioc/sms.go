@@ -11,6 +11,8 @@ import (
 )
 
 func InitSMSService() sms.Service {
+	//拥有限流的短信发送服务
+	//return ratelimit.NewRateLimitSMSService(localsms.NewService(), limiter.NewRedisSlidingWindowLimiter(InitRedis(), time.Second, 100))
 	// 腾讯云消息服务
 	//return initTencentSMSService()
 	return localsms.NewService()

@@ -1,4 +1,4 @@
-package retelimit
+package ratelimit
 
 import (
 	"basic-go/webook/internal/service/sms"
