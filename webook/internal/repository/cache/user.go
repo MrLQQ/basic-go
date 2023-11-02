@@ -43,7 +43,7 @@ func (c *RedisUserCache) Set(ctx context.Context, du domain.UserProfile) error {
 }
 
 func (c *RedisUserCache) key(userId string) string {
-	return fmt.Sprintf("user:info:%d", userId)
+	return fmt.Sprintf("user:info:%s", userId)
 }
 
 func NewRedisUserCache(cmd redis.Cmdable) UserCache {
