@@ -4,6 +4,7 @@ import (
 	"basic-go/webook/internal/web"
 	"basic-go/webook/internal/web/middleware"
 	"basic-go/webook/pkg/ginx/middleware/ratelimit"
+	"basic-go/webook/pkg/limiter"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -22,7 +23,7 @@ func InitWebServer(mdls []gin.HandlerFunc, userHdl *web.UserHandler) *gin.Engine
 
 func InitGinMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
-		ratelimit.NewBuilder(redisClient, time.Second, 100).Build(),
+		ratelimit.NewBuilder(limiter.NewRedisSlidingWindowLimiter(redisClient, time.Second, 100)).Build(),
 		corsHandler(),
 		// 使用JWT
 		(&middleware.LoginJWTMiddlewareBuilder{}).CheckLogin(),
