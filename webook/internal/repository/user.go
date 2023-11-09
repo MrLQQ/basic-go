@@ -6,6 +6,7 @@ import (
 	"basic-go/webook/internal/repository/dao"
 	"context"
 	"database/sql"
+	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -19,6 +20,7 @@ type UserRepository interface {
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
 	Edit(ctx context.Context, profile domain.UserProfile) error
 	Profile(ctx context.Context, profile domain.UserProfile) (domain.UserProfile, error)
+	FindByWechat(ctx *gin.Context, openId string) (domain.User, error)
 }
 
 type CacheUserRepository struct {
@@ -51,13 +53,25 @@ func (repo *CacheUserRepository) toDomainUser(u dao.User) domain.User {
 		Email:    u.Email.String,
 		Phone:    u.Phone.String,
 		Password: u.Password,
+		WechatInfo: domain.WechatInfo{
+			OpenId:  u.WechatOpenId.String,
+			UnionId: u.WechatUnionId.String,
+		},
 	}
 }
 func (repo *CacheUserRepository) toEntity(u domain.User) dao.User {
 	return dao.User{
-		Id:       u.Id,
-		Email:    sql.NullString{String: u.Email, Valid: u.Email != ""},
-		Phone:    sql.NullString{String: u.Phone, Valid: u.Phone != ""},
+		Id:    u.Id,
+		Email: sql.NullString{String: u.Email, Valid: u.Email != ""},
+		Phone: sql.NullString{String: u.Phone, Valid: u.Phone != ""},
+		WechatUnionId: sql.NullString{
+			String: u.WechatInfo.UnionId,
+			Valid:  u.WechatInfo.UnionId != "",
+		},
+		WechatOpenId: sql.NullString{
+			String: u.WechatInfo.OpenId,
+			Valid:  u.WechatInfo.OpenId != "",
+		},
 		Password: u.Password,
 	}
 }
@@ -105,4 +119,12 @@ func (repo *CacheUserRepository) FindByPhone(ctx context.Context, phone string) 
 		return domain.User{}, err
 	}
 	return repo.toDomainUser(u), nil
+}
+
+func (repo *CacheUserRepository) FindByWechat(ctx *gin.Context, openId string) (domain.User, error) {
+	ue, err := repo.dao.FindByWechat(ctx, openId)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return repo.toDomainUser(ue), nil
 }

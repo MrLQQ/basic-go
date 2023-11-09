@@ -1,18 +1,22 @@
 package web
 
 import (
+	"basic-go/webook/internal/service"
 	"basic-go/webook/internal/service/oauth2/wechat"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 type OAuth2WechatHandler struct {
-	svc wechat.Service
+	svc     wechat.Service
+	userSvc service.UserService
+	jwtHandler
 }
 
-func NewOAuth2WechatHandler(svc wechat.Service) *OAuth2WechatHandler {
+func NewOAuth2WechatHandler(svc wechat.Service, userSvc service.UserService) *OAuth2WechatHandler {
 	return &OAuth2WechatHandler{
-		svc: svc,
+		svc:     svc,
+		userSvc: userSvc,
 	}
 }
 func (o *OAuth2WechatHandler) RegisterRoutes(server *gin.Engine) {
@@ -31,5 +35,18 @@ func (o *OAuth2WechatHandler) Auth2URL(ctx *gin.Context) {
 }
 
 func (o *OAuth2WechatHandler) Callback(ctx *gin.Context) {
-
+	code := ctx.Query("code")
+	wechatInfo, err := o.svc.VerifyCode(ctx, code)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "授权码有误"})
+		return
+	}
+	u, err := o.userSvc.FindOrCreateByWechat(ctx, wechatInfo)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
+		return
+	}
+	o.setJWTToken(ctx, u.Id)
+	ctx.JSON(http.StatusOK, Result{Code: 1, Msg: "ok"})
+	return
 }

@@ -10,6 +10,9 @@ func InitWechatService() wechat.Service {
 	if !ok {
 		panic("WECHAT_APP_ID is not found")
 	}
-
-	return wechat.NewService(appID)
+	appSecret, ok := os.LookupEnv("WECHAT_APP_SECRET")
+	if !ok {
+		panic("WECHAT_APP_SECRET is not found")
+	}
+	return wechat.NewService(appID, appSecret)
 }

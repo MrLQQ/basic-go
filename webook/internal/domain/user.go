@@ -3,10 +3,11 @@ package domain
 import "time"
 
 type User struct {
-	Id       int64
-	Email    string
-	Password string
-	Phone    string
+	Id         int64
+	Email      string
+	Password   string
+	Phone      string
+	WechatInfo WechatInfo
 
 	// UTC 0 的时区
 	Ctime time.Time

@@ -5,6 +5,7 @@ import (
 	"basic-go/webook/internal/repository"
 	"context"
 	"errors"
+	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,6 +20,7 @@ type UserService interface {
 	Edit(ctx context.Context, userProfile domain.UserProfile) error
 	Profile(ctx context.Context, userProfile domain.UserProfile) (domain.UserProfile, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
+	FindOrCreateByWechat(ctx *gin.Context, info domain.WechatInfo) (domain.User, error)
 }
 
 type userService struct {
@@ -86,4 +88,24 @@ func (svc *userService) FindOrCreate(ctx context.Context, phone string) (domain.
 	// 要么 err == nil,要么ErrDuplicateUser，也代表用户存在
 	// 由于主从延迟,刚插入数据库的内容可能查询不到,
 	return svc.repo.FindByPhone(ctx, phone)
+}
+
+func (svc *userService) FindOrCreateByWechat(ctx *gin.Context, wechatInfo domain.WechatInfo) (domain.User, error) {
+	// 先查找，是否存在
+	u, err := svc.repo.FindByWechat(ctx, wechatInfo.OpenId)
+	if !errors.Is(err, repository.ErrUserNotFound) {
+		return u, err
+	}
+	// 用户没找到
+	err = svc.repo.Create(ctx, domain.User{WechatInfo: wechatInfo})
+	// 两种可能:
+	// 		1.一种是err恰好是唯一索引冲突（phone）
+	//		2.err != nil, 系统错误
+	if err != nil && !errors.Is(err, repository.ErrDuplicateUser) {
+		return domain.User{}, err
+	}
+
+	// 要么 err == nil,要么ErrDuplicateUser，也代表用户存在
+	// 由于主从延迟,刚插入数据库的内容可能查询不到,
+	return svc.repo.FindByWechat(ctx, wechatInfo.OpenId)
 }
