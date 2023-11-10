@@ -24,6 +24,7 @@ func NewOAuth2WechatHandler(svc wechat.Service, userSvc service.UserService) *OA
 		userSvc:         userSvc,
 		key:             []byte("jBxoQWRS5L9vYr$mYq5U9d5BRPHfSBA1"),
 		stateCookieName: "jwt-state",
+		jwtHandler:      newJwtHandler(),
 	}
 }
 func (o *OAuth2WechatHandler) RegisterRoutes(server *gin.Engine) {
@@ -60,6 +61,11 @@ func (o *OAuth2WechatHandler) Callback(ctx *gin.Context) {
 		return
 	}
 	u, err := o.userSvc.FindOrCreateByWechat(ctx, wechatInfo)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
+		return
+	}
+	err = o.setRefreshJWTToken(ctx, u.Id)
 	if err != nil {
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 		return

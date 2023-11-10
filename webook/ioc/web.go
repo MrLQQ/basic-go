@@ -44,7 +44,7 @@ func corsHandler() gin.HandlerFunc {
 		//业务请求中可以带上的头
 		AllowHeaders: []string{"Content-Type", "authorization"},
 		// 允许前端访问后端响应中带的头部
-		ExposeHeaders: []string{"x-jwt-token"},
+		ExposeHeaders: []string{"x-jwt-token", "x-refresh-token"},
 		//AllowMethods:     []string{"POST"},
 		// 哪些来源是允许的
 		AllowOriginFunc: func(origin string) bool {
