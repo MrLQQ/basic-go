@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"basic-go/webook/internal/web"
+	ijwt "basic-go/webook/internal/web/jwt"
 	"basic-go/webook/internal/web/middleware"
 	"basic-go/webook/pkg/ginx/middleware/ratelimit"
 	"basic-go/webook/pkg/limiter"
@@ -22,12 +23,12 @@ func InitWebServer(mdls []gin.HandlerFunc, userHdl *web.UserHandler, wechatHdl *
 	return server
 }
 
-func InitGinMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
+func InitGinMiddlewares(redisClient redis.Cmdable, hdl ijwt.Handler) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
 		ratelimit.NewBuilder(limiter.NewRedisSlidingWindowLimiter(redisClient, time.Second, 100)).Build(),
 		corsHandler(),
 		// 使用JWT
-		(&middleware.LoginJWTMiddlewareBuilder{}).CheckLogin(),
+		middleware.NewLoginJWTMiddlewareBuilder(hdl).CheckLogin(),
 		func(ctx *gin.Context) {
 			println("这是我的middleware……")
 		},
