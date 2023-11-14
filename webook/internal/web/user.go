@@ -10,6 +10,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -77,6 +78,11 @@ func (h *UserHandler) LoginSms(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统异常"})
 		return
 	}
+	zap.L().Error("手机验证码验证失败",
+		// 生产环境不可以打印手机号码
+		// 开发环境可以打印
+		zap.String("phone", req.Phone),
+		zap.Error(err))
 	if !Ok {
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "验证码错误，请重新输入"})
 		return
@@ -114,6 +120,7 @@ func (h *UserHandler) SendSMSLoginCode(ctx *gin.Context) {
 	case nil:
 		ctx.JSON(http.StatusOK, Result{Msg: "发送成功"})
 	case service.ErrCodeSendTooMany:
+		zap.L().Warn("频繁发送验证码")
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "短信发送太频繁，请稍后再试"})
 	default:
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})

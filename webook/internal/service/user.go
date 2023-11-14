@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,11 +26,13 @@ type UserService interface {
 
 type userService struct {
 	repo repository.UserRepository
+	//logger *zap.Logger
 }
 
 func NewuserService(repo repository.UserRepository) UserService {
 	return &userService{
 		repo: repo,
+		//logger: zap.L(),
 	}
 }
 
@@ -96,7 +99,10 @@ func (svc *userService) FindOrCreateByWechat(ctx *gin.Context, wechatInfo domain
 	if !errors.Is(err, repository.ErrUserNotFound) {
 		return u, err
 	}
-	// 用户没找到
+	// 用户没找到,意味着新用户
+	// 这里会输出JSON格式的wechatINFO
+	zap.L().Info("新用户", zap.Any("wechatInfo", wechatInfo))
+	//svc.logger.Info("新用户", zap.Any("wechatInfo", wechatInfo))
 	err = svc.repo.Create(ctx, domain.User{WechatInfo: wechatInfo})
 	// 两种可能:
 	// 		1.一种是err恰好是唯一索引冲突（phone）

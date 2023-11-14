@@ -4,6 +4,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"time"
@@ -15,12 +16,21 @@ import (
 
 func main() {
 	initViperV1()
+	initLogger()
 	//initViperWatch()
 	server := InitWebServer()
 	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello,启动成功")
 	})
 	server.Run(":8080")
+}
+
+func initLogger() {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+	zap.ReplaceGlobals(logger)
 }
 
 func initViper() {
