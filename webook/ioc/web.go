@@ -6,6 +6,8 @@ import (
 	"basic-go/webook/internal/web/middleware"
 	"basic-go/webook/pkg/ginx/middleware/ratelimit"
 	"basic-go/webook/pkg/limiter"
+	"basic-go/webook/pkg/logger"
+	"context"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -23,15 +25,19 @@ func InitWebServer(mdls []gin.HandlerFunc, userHdl *web.UserHandler, wechatHdl *
 	return server
 }
 
-func InitGinMiddlewares(redisClient redis.Cmdable, hdl ijwt.Handler) []gin.HandlerFunc {
+func InitGinMiddlewares(redisClient redis.Cmdable,
+	hdl ijwt.Handler, l logger.LoggerV1) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
-		ratelimit.NewBuilder(limiter.NewRedisSlidingWindowLimiter(redisClient, time.Second, 100)).Build(),
 		corsHandler(),
-		// 使用JWT
-		middleware.NewLoginJWTMiddlewareBuilder(hdl).CheckLogin(),
 		func(ctx *gin.Context) {
 			println("这是我的middleware……")
 		},
+		ratelimit.NewBuilder(limiter.NewRedisSlidingWindowLimiter(redisClient, time.Second, 100)).Build(),
+		middleware.NewLogMiddlewareBuilder(func(ctx context.Context, al middleware.AccessLog) {
+			l.Debug("", logger.Field{Key: "req", Value: al})
+		}).AllowReqBody().AllowRespBody().Build(),
+		// 使用JWT
+		middleware.NewLoginJWTMiddlewareBuilder(hdl).CheckLogin(),
 	}
 }
 

@@ -2,13 +2,14 @@ package ioc
 
 import (
 	"basic-go/webook/internal/repository/dao"
+	"basic-go/webook/pkg/logger"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	glogger "gorm.io/gorm/logger"
 )
 
-func InitDB() *gorm.DB {
+func InitDB(l logger.LoggerV1) *gorm.DB {
 	type Config struct {
 		DSN string `yaml:"DSN"`
 	}
@@ -20,8 +21,15 @@ func InitDB() *gorm.DB {
 		panic(err)
 	}
 
+	//db, err := gorm.Open(mysql.Open(cfg.DSN), &gorm.Config{
+	//	Logger: logger.Default.LogMode(logger.Info),
+	//})
 	db, err := gorm.Open(mysql.Open(cfg.DSN), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: glogger.New(gormLoggerFunc(l.Debug), glogger.Config{
+			// 慢查询日志
+			SlowThreshold: 0,
+			LogLevel:      glogger.Info,
+		}),
 	})
 	if err != nil {
 		panic(err)
@@ -32,4 +40,10 @@ func InitDB() *gorm.DB {
 		panic(err)
 	}
 	return db
+}
+
+type gormLoggerFunc func(msg string, fields ...logger.Field)
+
+func (g gormLoggerFunc) Printf(s string, i ...interface{}) {
+	g(s, logger.Field{Key: "args", Value: i})
 }
