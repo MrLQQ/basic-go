@@ -2,6 +2,7 @@ package wechat
 
 import (
 	"basic-go/webook/internal/domain"
+	"basic-go/webook/pkg/logger"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -20,9 +21,10 @@ type service struct {
 	appID     string
 	appSecret string
 	client    *http.Client
+	l         logger.LoggerV1
 }
 
-func NewService(appid string, appSecret string) Service {
+func NewService(appid string, appSecret string, l logger.LoggerV1) Service {
 	return &service{
 		appID:     appid,
 		appSecret: appSecret,

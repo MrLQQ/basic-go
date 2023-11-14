@@ -2,9 +2,10 @@ package ioc
 
 import (
 	"basic-go/webook/internal/service/oauth2/wechat"
+	"basic-go/webook/pkg/logger"
 )
 
-func InitWechatService() wechat.Service {
+func InitWechatService(l logger.LoggerV1) wechat.Service {
 	//appID, ok := os.LookupEnv("WECHAT_APP_ID")
 	//if !ok {
 	//	panic("WECHAT_APP_ID is not found")
@@ -15,5 +16,5 @@ func InitWechatService() wechat.Service {
 	//}
 	appID := "appID"
 	appSecret := "appSecret"
-	return wechat.NewService(appID, appSecret)
+	return wechat.NewService(appID, appSecret, l)
 }
