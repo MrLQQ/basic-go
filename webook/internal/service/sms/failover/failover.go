@@ -2,6 +2,7 @@ package failover
 
 import (
 	"basic-go/webook/internal/service/sms"
+	"basic-go/webook/pkg/logger"
 	"context"
 	"errors"
 	"log"
@@ -14,11 +15,13 @@ type FailOverSMSService struct {
 	// 这是V1的字段
 	// 记录一个当前下标
 	idx uint64
+	l   logger.LoggerV1
 }
 
-func NewFailOverSMSService(svcs []sms.Service) *FailOverSMSService {
+func NewFailOverSMSService(svcs []sms.Service, l logger.LoggerV1) *FailOverSMSService {
 	return &FailOverSMSService{
 		svcs: svcs,
+		l:    l,
 	}
 }
 
@@ -28,8 +31,10 @@ func (f FailOverSMSService) Send(ctx context.Context, tplId string, args []strin
 		if err == nil {
 			return nil
 		}
+		f.l.Warn("轮询运营商发送消息失败", logger.Error(err), logger.Field{Key: "tpid", Value: tplId})
 		log.Println(err)
 	}
+	f.l.Error("发送失败，所有服务商都尝试过了")
 	return errors.New("发送失败，所有服务商都尝试过了")
 }
 
@@ -47,11 +52,13 @@ func (f FailOverSMSService) SendV1(ctx context.Context, tplId string, args []str
 		case err == nil:
 			return nil
 		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+			f.l.Error("消息发送取消或超时", logger.Error(err))
 			return err
 			// 前者是被取消，后者是超时
 		}
 		// 其他情况会走到这里，打印日志
-		log.Println(err)
+		f.l.Error("消息发送失败", logger.Error(err))
 	}
+	f.l.Error("发送失败，所有服务商都尝试过了")
 	return errors.New("发送失败，所有服务商都尝试过了")
 }

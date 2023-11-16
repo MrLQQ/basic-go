@@ -23,11 +23,11 @@ func InitWebServer() *gin.Engine {
 	userService := service.NewuserService(userRepository)
 	codeCache := cache.NewRedisCodeCache(cmdable)
 	codeRepository := repository.NewCacheCodeRepository(codeCache)
-	smsService := ioc.InitSMSService()
+	smsService := ioc.InitSMSService(logger)
 	wechatService := ioc.InitWechatService(logger)
 	codeService := service.NewCodeCacheService(codeRepository, smsService)
-	userHandler := web.NewUserHandler(userService, handler, codeService)
-	wechatHandler := web.NewOAuth2WechatHandler(wechatService, handler, userService)
+	userHandler := web.NewUserHandler(userService, handler, codeService, logger)
+	wechatHandler := web.NewOAuth2WechatHandler(wechatService, handler, userService, logger)
 	engine := ioc.InitWebServer(v, userHandler, wechatHandler)
 	return engine
 }

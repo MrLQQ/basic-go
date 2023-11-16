@@ -1,18 +1,19 @@
 package tencent
 
 import (
+	"basic-go/webook/pkg/logger"
 	"context"
 	"fmt"
 	"github.com/ecodeclub/ekit"
 	"github.com/ecodeclub/ekit/slice"
 	sms "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms/v20210111" // 引入sms
-	"go.uber.org/zap"
 )
 
 type Service struct {
 	client   *sms.Client
 	appId    *string
 	SignName *string
+	l        logger.LoggerV1
 }
 
 func (s Service) Send(ctx context.Context, tplId string, args []string, number ...string) error {
@@ -24,12 +25,10 @@ func (s Service) Send(ctx context.Context, tplId string, args []string, number .
 	request.TemplateParamSet = s.toPtrSlice(args)
 	request.PhoneNumberSet = s.toPtrSlice(number)
 	response, err := s.client.SendSms(request)
-	zap.L().Debug("请求腾讯SendSMS接口",
-		zap.Any("req", request),
-		zap.Any("resp", response))
+	s.l.Debug("请求腾讯SendSMS接口", logger.Field{Key: "req", Value: request}, logger.Field{Key: "resp", Value: response})
 	// 处理异常
 	if err != nil {
-		fmt.Printf("An API error has returned: %s", err)
+		s.l.Error("An API error has returned", logger.Error(err))
 		return err
 	}
 	for _, statusPtr := range response.Response.SendStatusSet {
@@ -40,6 +39,7 @@ func (s Service) Send(ctx context.Context, tplId string, args []string, number .
 		status := *statusPtr
 		if status.Code == nil || *(status.Code) != "Ok" {
 			// 发送失败
+			s.l.Error("短息发送失败", logger.Field{Key: "code", Value: *status.Code})
 			return fmt.Errorf("短息发送失败 code:%s, msg:%s", *status.Code, *status.Message)
 
 		}
@@ -55,10 +55,11 @@ func (s *Service) toPtrSlice(data []string) []*string {
 		})
 }
 
-func NewService(client *sms.Client, appId string, SignName string) *Service {
+func NewService(client *sms.Client, appId string, SignName string, l logger.LoggerV1) *Service {
 	return &Service{
 		client:   client,
 		appId:    &appId,
 		SignName: &SignName,
+		l:        l,
 	}
 }

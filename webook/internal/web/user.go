@@ -4,13 +4,13 @@ import (
 	"basic-go/webook/internal/domain"
 	"basic-go/webook/internal/service"
 	ijwt "basic-go/webook/internal/web/jwt"
+	"basic-go/webook/pkg/logger"
 	"errors"
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -30,9 +30,10 @@ type UserHandler struct {
 	aboutMeRexExp  *regexp.Regexp
 	svc            service.UserService
 	codeSvc        service.CodeService
+	l              logger.LoggerV1
 }
 
-func NewUserHandler(svc service.UserService, hdl ijwt.Handler, codeSvc service.CodeService) *UserHandler {
+func NewUserHandler(svc service.UserService, hdl ijwt.Handler, codeSvc service.CodeService, l logger.LoggerV1) *UserHandler {
 	return &UserHandler{
 		emailRexRxp:    regexp.MustCompile(emailRegexPatterm, regexp.None),
 		passwordRexExp: regexp.MustCompile(passwordRegexPatterm, regexp.None),
@@ -41,6 +42,7 @@ func NewUserHandler(svc service.UserService, hdl ijwt.Handler, codeSvc service.C
 		svc:            svc,
 		codeSvc:        codeSvc,
 		Handler:        hdl,
+		l:              l,
 	}
 }
 
@@ -75,25 +77,25 @@ func (h *UserHandler) LoginSms(ctx *gin.Context) {
 
 	Ok, err := h.codeSvc.Verify(ctx, bizLogin, req.Phone, req.Code)
 	if err != nil {
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统异常"})
 		return
 	}
-	zap.L().Error("手机验证码验证失败",
-		// 生产环境不可以打印手机号码
-		// 开发环境可以打印
-		zap.String("phone", req.Phone),
-		zap.Error(err))
+	h.l.Error("手机验证码验证失败", logger.Error(err))
 	if !Ok {
+		h.l.Error("验证码错误，请重新输入", logger.Field{Key: "inputCode", Value: req.Code})
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "验证码错误，请重新输入"})
 		return
 	}
 	u, err := h.svc.FindOrCreate(ctx, req.Phone)
 	if err != nil {
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统异常"})
 		return
 	}
 	err = h.SetLoginToken(ctx, u.Id)
 	if err != nil {
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 		return
 	}
@@ -109,6 +111,7 @@ func (h *UserHandler) SendSMSLoginCode(ctx *gin.Context) {
 	}
 	// 这边可以校验Req
 	if req.Phone == "" {
+		h.l.Debug("未输入手机号码")
 		ctx.JSON(http.StatusOK, Result{
 			Code: 4,
 			Msg:  "请输入手机号码",
@@ -120,9 +123,10 @@ func (h *UserHandler) SendSMSLoginCode(ctx *gin.Context) {
 	case nil:
 		ctx.JSON(http.StatusOK, Result{Msg: "发送成功"})
 	case service.ErrCodeSendTooMany:
-		zap.L().Warn("频繁发送验证码")
+		h.l.Warn("频发发送验证码", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "短信发送太频繁，请稍后再试"})
 	default:
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 		// 需要补日志
 	}
@@ -140,10 +144,12 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 	}
 	isEmail, err := h.emailRexRxp.MatchString(req.Email)
 	if err != nil {
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 		return
 	}
 	if !isEmail {
+		h.l.Error("邮箱格式非法", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "邮箱格式非法"})
 		return
 	}
@@ -151,14 +157,17 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 	isPassword, err := h.passwordRexExp.MatchString(req.Password)
 
 	if err != nil {
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 		return
 	}
 	if !isPassword {
+		h.l.Error("密码格式非法：密码必须要同时包含字母和数字，位数1~15", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "密码格式非法：密码必须要同时包含字母和数字，位数1~15"})
 		return
 	}
 	if req.Password != req.ConfirmPassword {
+		h.l.Error("两次密码不一致", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "两次密码不一致"})
 		return
 	}
@@ -170,10 +179,13 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 	// 要判定邮箱冲突
 	switch {
 	case err == nil:
+		h.l.Info("注册成功")
 		ctx.JSON(http.StatusOK, Result{Code: 0, Msg: "注册成功"})
 	case errors.Is(err, service.ErrDuplicateUser):
+		h.l.Error("邮箱冲突,请换一个", logger.Field{Key: "currentEmail", Value: req.Email}, logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "邮箱冲突,请换一个"})
 	default:
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 	}
 }
@@ -192,13 +204,17 @@ func (h *UserHandler) LoginJWT(ctx *gin.Context) {
 	case err == nil:
 		err := h.SetLoginToken(ctx, u.Id)
 		if err != nil {
+			h.l.Error("系统异常", logger.Error(err))
 			ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 			return
 		}
+		h.l.Info("登录成功")
 		ctx.JSON(http.StatusOK, Result{Code: 0, Msg: "登录成功"})
 	case errors.Is(err, service.ErrInvalidUserOrPassword):
+		h.l.Error("用户名或密码错误", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "用户名或密码错误"})
 	default:
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 	}
 }
@@ -232,13 +248,18 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 		})
 		err := sess.Save()
 		if err != nil {
+			h.l.Error("系统异常", logger.Error(err))
 			ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 			return
 		}
 		ctx.JSON(http.StatusOK, Result{Code: 0, Msg: "登录成功"})
 	case errors.Is(err, service.ErrInvalidUserOrPassword):
+		h.l.Error("用户名或密码错误", logger.Field{Key: "inputEmail", Value: req.Email},
+			logger.Field{Key: "inputPassword", Value: req.Password},
+			logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "用户名或密码错误"})
 	default:
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 	}
 }
@@ -257,20 +278,28 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 
 	isNickName, err := h.nicknameRexExp.MatchString(req.Nickname)
 	if err != nil {
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.String(http.StatusOK, "系统错误……")
 		return
 	}
 	if !isNickName {
+		h.l.Error("昵称只能由汉字、字母、数字、下划线组成，长度4~10位",
+			logger.Field{Key: "inputName", Value: req.Nickname},
+			logger.Error(err))
 		ctx.String(http.StatusOK, "昵称只能由汉字、字母、数字、下划线组成，长度4~10位")
 		return
 	}
 
 	isAboutMe, err := h.aboutMeRexExp.MatchString(req.AboutMe)
 	if err != nil {
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.String(http.StatusOK, "系统错误……")
 		return
 	}
 	if !isAboutMe {
+		h.l.Error("个人介绍不能超过100个字符",
+			logger.Field{Key: "inputAboutMe", Value: req.AboutMe},
+			logger.Error(err))
 		ctx.String(http.StatusOK, "个人介绍不能超过100个字符")
 		return
 	}
@@ -291,8 +320,10 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 	})
 	switch {
 	case err == nil:
+		h.l.Info("更新成功")
 		ctx.String(http.StatusOK, "更新成功")
 	default:
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.String(http.StatusOK, "系统错误")
 	}
 
@@ -318,6 +349,7 @@ func (h *UserHandler) Profile(ctx *gin.Context) {
 		User_id: user,
 	})
 	if err != nil {
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.String(http.StatusOK, "系统错误")
 	}
 	userProfile := Profile{
@@ -346,6 +378,7 @@ func (h *UserHandler) RefreshToken(ctx *gin.Context) {
 
 	err = h.CheckSession(ctx, rc.Ssid)
 	if err != nil {
+		h.l.Error("当前SSID对应的token无效", logger.Field{Key: "SSID", Value: rc.Ssid}, logger.Error(err))
 		// 所查询的ssid 在redis中，说明当前ssid 对应的token 是无效的
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
@@ -362,8 +395,10 @@ func (h *UserHandler) RefreshToken(ctx *gin.Context) {
 func (h *UserHandler) LogoutJWT(ctx *gin.Context) {
 	err := h.ClearToken(ctx)
 	if err != nil {
+		h.l.Error("系统异常", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 5, Msg: "系统错误"})
 		return
 	}
+	h.l.Info("退出成功")
 	ctx.JSON(http.StatusOK, Result{Code: 0, Msg: "退出成功"})
 }
