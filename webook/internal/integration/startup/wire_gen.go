@@ -1,4 +1,4 @@
-package main
+package startup
 
 import (
 	"basic-go/webook/internal/repository"
@@ -13,10 +13,10 @@ import (
 
 func InitWebServer() *gin.Engine {
 	cmdable := ioc.InitRedis()
-	logger := ioc.InitLogger()
+	logger := InitLogger()
 	handler := ijwt.NewRedisJWTHandler(cmdable)
 	v := ioc.InitGinMiddlewares(cmdable, handler, logger)
-	db := ioc.InitDB(logger)
+	db := InitDB()
 	userDAO := dao.NewGORMUserDao(db)
 	articleDAO := dao.NewArticleGORMDAO(db)
 	userCache := cache.NewRedisUserCache(cmdable)
@@ -26,7 +26,7 @@ func InitWebServer() *gin.Engine {
 	codeRepository := repository.NewCacheCodeRepository(codeCache)
 	articleRepository := repository.NewCachedArticleRepository(articleDAO)
 	smsService := ioc.InitSMSService(logger)
-	wechatService := ioc.InitWechatService(logger)
+	wechatService := InitWechatService(logger)
 	codeService := service.NewCodeCacheService(codeRepository, smsService)
 	articleService := service.NewArticleService(articleRepository)
 	userHandler := web.NewUserHandler(userService, handler, codeService, logger)
@@ -34,4 +34,14 @@ func InitWebServer() *gin.Engine {
 	wechatHandler := web.NewOAuth2WechatHandler(wechatService, handler, userService, logger)
 	engine := ioc.InitWebServer(v, userHandler, wechatHandler, articleHandler)
 	return engine
+}
+
+func InitArticleHandler() *web.ArticleHandler {
+	loggerV1 := InitLogger()
+	db := InitDB()
+	articleDAO := dao.NewArticleGORMDAO(db)
+	articleRepository := repository.NewCachedArticleRepository(articleDAO)
+	articleService := service.NewArticleService(articleRepository)
+	articleHandler := web.NewArticleHandler(articleService, loggerV1)
+	return articleHandler
 }

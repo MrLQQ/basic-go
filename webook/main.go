@@ -69,7 +69,7 @@ func initViperWatch() {
 }
 
 func initViperV1() {
-	cfile := pflag.String("config", "config/config.yaml", "配置文件路径")
+	cfile := pflag.String("config", "config/dev.yaml", "配置文件路径")
 	// 这一步之后 cfalg才有值
 	pflag.Parse()
 
