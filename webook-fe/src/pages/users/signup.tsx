@@ -10,7 +10,7 @@ const onFinish = (values: any) => {
                 alert(res.statusText);
                 return
             }
-           alert(res.data);
+           alert(res.data.msg);
         }).catch((err) => {
             alert(err);
     })
