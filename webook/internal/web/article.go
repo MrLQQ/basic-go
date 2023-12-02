@@ -27,6 +27,7 @@ func (h *ArticleHandler) RegisterRoutes(server *gin.Engine) {
 // 接受Article输入，返回一个ID，文章的ID
 func (h *ArticleHandler) Edit(ctx *gin.Context) {
 	type Req struct {
+		Id      int64
 		Title   string `json:"title"`
 		Content string `json:"content"`
 	}
@@ -36,6 +37,7 @@ func (h *ArticleHandler) Edit(ctx *gin.Context) {
 	}
 	uc := ctx.MustGet("user").(jwt.UserClaims)
 	id, err := h.svc.Save(ctx, domain.Article{
+		Id:      req.Id,
 		Title:   req.Title,
 		Content: req.Content,
 		Author: domain.Author{
@@ -46,7 +48,7 @@ func (h *ArticleHandler) Edit(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, Result{
 			Msg: "系统错误",
 		})
-		h.l.Error("保存文昌数据失败", logger.Int64("uid", uc.Uid), logger.Error(err))
+		h.l.Error("保存文章数据失败", logger.Int64("uid", uc.Uid), logger.Error(err))
 	}
 	ctx.JSON(http.StatusOK, Result{
 		Data: id,

@@ -77,6 +77,45 @@ func (s *ArticleHandlerSuite) Test_Edit() {
 				Data: 1,
 			}),
 		},
+		{
+			name: "修改帖子",
+			before: func(t *testing.T) {
+				err := s.db.Create(dao.Article{
+					Id:       2,
+					Title:    "我的标题",
+					Content:  "我的内容",
+					AuthorId: 123,
+					Ctime:    456,
+					Utime:    789,
+				}).Error
+				assert.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 验证是否保存到了数据库
+				var art dao.Article
+				err := s.db.Where("id=?", 2).First(&art).Error
+				assert.NoError(t, err)
+				assert.True(t, art.Utime > 789)
+				art.Utime = 0
+				assert.Equal(t, dao.Article{
+					Id:       2,
+					Title:    "新的标题",
+					Content:  "新的内容",
+					AuthorId: 123,
+					Ctime:    456,
+					Status:   1,
+				}, art)
+			},
+			art: Article{
+				Id:      2,
+				Title:   "新的标题",
+				Content: "新的内容",
+			},
+			wantCode: http.StatusOK,
+			wantRes: Result[int64](Result[int]{
+				Data: 2,
+			}),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -119,6 +158,7 @@ type Result[T any] struct {
 }
 
 type Article struct {
+	Id      int64  `json:"id"`
 	Title   string `json:"title"`
 	Content string `json:"content"`
 }

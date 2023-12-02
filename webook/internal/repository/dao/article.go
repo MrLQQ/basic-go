@@ -8,10 +8,23 @@ import (
 
 type ArticleDAO interface {
 	Insert(ctx context.Context, art Article) (int64, error)
+	UpdateById(ctx context.Context, entity Article) error
 }
 
 type ArticleGORMDAO struct {
 	db *gorm.DB
+}
+
+func (a *ArticleGORMDAO) UpdateById(ctx context.Context, art Article) error {
+	now := time.Now().UnixMilli()
+	return a.db.WithContext(ctx).Model(&art).
+		Where("id = ?", art.Id).
+		Updates(map[string]any{
+			"title":   art.Title,
+			"content": art.Content,
+			"status":  art.Status,
+			"utime":   now,
+		}).Error
 }
 
 func NewArticleGORMDAO(db *gorm.DB) ArticleDAO {
@@ -34,6 +47,7 @@ type Article struct {
 	Content string `gorm:"type=BLOB"`
 	// 我要根据创作者ID来查询
 	AuthorId int64 `gorm:"index"`
+	Status   uint8 `bson:"status,omitempty"`
 	// 创建时间
 	Ctime int64
 	// 更新时间
