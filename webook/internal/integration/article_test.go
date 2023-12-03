@@ -116,6 +116,45 @@ func (s *ArticleHandlerSuite) Test_Edit() {
 				Data: 2,
 			}),
 		},
+		{
+			name: "修改帖子 - 修改别人的帖子",
+			before: func(t *testing.T) {
+				err := s.db.Create(dao.Article{
+					Id:       3,
+					Title:    "我的标题",
+					Content:  "我的内容",
+					AuthorId: 234,
+					Status:   1,
+					Ctime:    456,
+					Utime:    789,
+				}).Error
+				assert.NoError(t, err)
+			},
+			after: func(t *testing.T) {
+				// 验证数据没有变
+				var art dao.Article
+				err := s.db.Where("id=?", 3).First(&art).Error
+				assert.NoError(t, err)
+				assert.Equal(t, dao.Article{
+					Id:       3,
+					Title:    "我的标题",
+					Content:  "我的内容",
+					AuthorId: 234,
+					Status:   1,
+					Ctime:    456,
+					Utime:    789,
+				}, art)
+			},
+			art: Article{
+				Id:      3,
+				Title:   "新的标题",
+				Content: "新的内容",
+			},
+			wantCode: http.StatusOK,
+			wantRes: Result[int64]{
+				Msg: "系统错误",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
