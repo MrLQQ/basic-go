@@ -23,7 +23,7 @@ type articleService struct {
 }
 
 func (a *articleService) Publish(ctx context.Context, art domain.Article) (int64, error) {
-	panic("implement me")
+	return a.repo.Sync(ctx, art)
 }
 
 func (a *articleService) PublishV1(ctx context.Context, art domain.Article) (int64, error) {

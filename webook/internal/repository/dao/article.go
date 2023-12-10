@@ -61,3 +61,9 @@ type Article struct {
 	// 更新时间
 	Utime int64
 }
+
+type PublishArticle Article
+
+type PublishArticleV1 struct {
+	Article
+}
