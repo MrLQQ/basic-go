@@ -23,7 +23,7 @@ type CachedArticleRepository struct {
 }
 
 func (c *CachedArticleRepository) Sync(ctx context.Context, art domain.Article) (int64, error) {
-
+	return c.dao.Sync(ctx, c.toEntity(art))
 }
 
 func (c *CachedArticleRepository) SyncV2(ctx context.Context, art domain.Article) (int64, error) {

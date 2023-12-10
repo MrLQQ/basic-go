@@ -4,16 +4,99 @@ import (
 	"context"
 	"errors"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"time"
 )
 
 type ArticleDAO interface {
 	Insert(ctx context.Context, art Article) (int64, error)
 	UpdateById(ctx context.Context, entity Article) error
+	Sync(ctx context.Context, entity Article) (int64, error)
 }
 
 type ArticleGORMDAO struct {
 	db *gorm.DB
+}
+
+func (a *ArticleGORMDAO) Sync(ctx context.Context, art Article) (int64, error) {
+	var id = art.Id
+	err := a.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var (
+			err error
+		)
+		dao := NewArticleGORMDAO(tx)
+		if id > 0 {
+			err = dao.UpdateById(ctx, art)
+		} else {
+			id, err = dao.Insert(ctx, art)
+		}
+		if err != nil {
+			return err
+		}
+		art.Id = id
+		now := time.Now().UnixMilli()
+		pubArt := PublishArticle(art)
+		pubArt.Ctime = now
+		pubArt.Utime = now
+		err = tx.Clauses(clause.OnConflict{
+			// 对MySQL不起效，但是可以兼容别的方言
+			// Insert XXX on duplicate key set `title` = ?
+			// 别的方言： sqlite insert xx on conflict do updates
+			Columns: []clause.Column{{Name: "id"}},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"title":   pubArt.Title,
+				"content": pubArt.Content,
+				"utime":   now,
+			}),
+		}).Create(&pubArt).Error
+		return err
+	})
+
+	return id, err
+}
+
+func (a *ArticleGORMDAO) SyncV1(ctx context.Context, art Article) (int64, error) {
+	tx := a.db.WithContext(ctx).Begin()
+	if tx.Error != nil {
+		return 0, tx.Error
+	}
+	// 防止后面业务panic
+	defer tx.Rollback()
+
+	var (
+		id  = art.Id
+		err error
+	)
+	dao := NewArticleGORMDAO(tx)
+	if id > 0 {
+		err = dao.UpdateById(ctx, art)
+	} else {
+		id, err = dao.Insert(ctx, art)
+	}
+	if err != nil {
+		return 0, err
+	}
+	art.Id = id
+	now := time.Now().UnixMilli()
+	pubArt := PublishArticle(art)
+	pubArt.Ctime = now
+	pubArt.Utime = now
+	err = tx.Clauses(clause.OnConflict{
+		// 对MySQL不起效，但是可以兼容别的方言
+		// Insert XXX on duplicate key set `title` = ?
+		// 别的方言： sqlite insert xx on conflict do updates
+		Columns: []clause.Column{{Name: "id"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"title":   pubArt.Title,
+			"content": pubArt.Content,
+			"utime":   now,
+		}),
+	}).Create(&pubArt).Error
+	if err != nil {
+		return 0, err
+	}
+	tx.Commit()
+	return id, nil
 }
 
 func (a *ArticleGORMDAO) UpdateById(ctx context.Context, art Article) error {
