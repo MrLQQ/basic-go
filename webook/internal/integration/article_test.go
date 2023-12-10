@@ -62,10 +62,15 @@ func (s *ArticleHandlerSuite) Test_Edit() {
 				assert.NoError(t, err)
 				assert.True(t, art.Ctime > 0)
 				assert.True(t, art.Utime > 0)
-				assert.True(t, art.Id > 0)
-				assert.Equal(t, "我的标题", art.Title)
-				assert.Equal(t, "我的内容", art.Content)
-				assert.Equal(t, int64(123), art.AuthorId)
+				art.Ctime = 0
+				art.Utime = 0
+				assert.Equal(t, dao.Article{
+					Id:       1,
+					Title:    "我的标题",
+					Content:  "我的内容",
+					AuthorId: 123,
+					Status:   1,
+				}, art)
 			},
 			art: Article{
 				Title:   "我的标题",
@@ -85,8 +90,10 @@ func (s *ArticleHandlerSuite) Test_Edit() {
 					Title:    "我的标题",
 					Content:  "我的内容",
 					AuthorId: 123,
-					Ctime:    456,
-					Utime:    789,
+					// 假设这是一个已经发表了的帖子
+					Status: 2,
+					Ctime:  456,
+					Utime:  789,
 				}).Error
 				assert.NoError(t, err)
 			},
@@ -103,7 +110,8 @@ func (s *ArticleHandlerSuite) Test_Edit() {
 					Content:  "新的内容",
 					AuthorId: 123,
 					Ctime:    456,
-					Status:   1,
+					// 更新之后，是为发表状态
+					Status: 1,
 				}, art)
 			},
 			art: Article{

@@ -12,10 +12,35 @@ type ArticleDAO interface {
 	Insert(ctx context.Context, art Article) (int64, error)
 	UpdateById(ctx context.Context, entity Article) error
 	Sync(ctx context.Context, entity Article) (int64, error)
+	SyncStatus(ctx context.Context, uid int64, id int64, status uint8) error
 }
 
 type ArticleGORMDAO struct {
 	db *gorm.DB
+}
+
+func (a *ArticleGORMDAO) SyncStatus(ctx context.Context, uid int64, id int64, status uint8) error {
+	now := time.Now().UnixMilli()
+	return a.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&Article{}).
+			Where("id = ? and author_id = ?", uid, id).
+			Updates(map[string]any{
+				"utime":  now,
+				"status": status,
+			})
+		if res != nil {
+			return res.Error
+		}
+		if res.RowsAffected != 1 {
+			return errors.New("更新失败，ID不会或者作者不对")
+		}
+		return tx.Model(&PublishArticle{}).
+			Where("id = ?", uid).
+			Updates(map[string]any{
+				"utime":  now,
+				"status": status,
+			}).Error
+	})
 }
 
 func (a *ArticleGORMDAO) Sync(ctx context.Context, art Article) (int64, error) {
@@ -47,11 +72,11 @@ func (a *ArticleGORMDAO) Sync(ctx context.Context, art Article) (int64, error) {
 				"title":   pubArt.Title,
 				"content": pubArt.Content,
 				"utime":   now,
+				"status":  art.Status,
 			}),
 		}).Create(&pubArt).Error
 		return err
 	})
-
 	return id, err
 }
 
