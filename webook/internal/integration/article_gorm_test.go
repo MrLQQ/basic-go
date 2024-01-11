@@ -23,7 +23,7 @@ type ArticleHandlerSuite struct {
 
 func (s *ArticleHandlerSuite) SetupSuite() {
 	s.db = startup.InitDB()
-	hdl := startup.InitArticleHandler()
+	hdl := startup.InitArticleHandler(dao.NewArticleGORMDAO(s.db))
 	server := gin.Default()
 	server.Use(func(ctx *gin.Context) {
 		ctx.Set("user", ijwt.UserClaims{
@@ -77,10 +77,9 @@ func (s *ArticleHandlerSuite) Test_Edit() {
 				Content: "我的内容",
 			},
 			wantCode: http.StatusOK,
-			wantRes: Result[int64](Result[int]{
-				// 我希望ID是1
+			wantRes: Result[int64]{
 				Data: 1,
-			}),
+			},
 		},
 		{
 			name: "修改帖子",
@@ -120,9 +119,9 @@ func (s *ArticleHandlerSuite) Test_Edit() {
 				Content: "新的内容",
 			},
 			wantCode: http.StatusOK,
-			wantRes: Result[int64](Result[int]{
+			wantRes: Result[int64]{
 				Data: 2,
-			}),
+			},
 		},
 		{
 			name: "修改帖子 - 修改别人的帖子",
@@ -201,7 +200,7 @@ func TestArticleHandler(t *testing.T) {
 type Result[T any] struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
-	Data any    `json:"data"`
+	Data T      `json:"data"`
 }
 
 type Article struct {
