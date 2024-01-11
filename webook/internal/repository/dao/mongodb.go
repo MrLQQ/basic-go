@@ -6,6 +6,7 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -44,14 +45,45 @@ func (m MongoDBArticleDAO) UpdateById(ctx context.Context, art Article) error {
 	return nil
 }
 
-func (m MongoDBArticleDAO) Sync(ctx context.Context, entity Article) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+func (m MongoDBArticleDAO) Sync(ctx context.Context, art Article) (int64, error) {
+	var (
+		id  = art.Id
+		err error
+	)
+	if id > 0 {
+		err = m.UpdateById(ctx, art)
+	} else {
+		id, err = m.Insert(ctx, art)
+	}
+	if err != nil {
+		return 0, err
+	}
+	art.Id = id
+	now := time.Now().UnixMilli()
+	art.Utime = now
+	// liveCol 是 INSERT or UPDATE语义
+	filter := bson.D{bson.E{"id", art.Id},
+		bson.E{"author_id", art.AuthorId}}
+	set := bson.D{bson.E{"$set", art},
+		bson.E{"$setOnInsert",
+			bson.D{bson.E{"ctime", now}}}}
+	_, err = m.liveCol.UpdateOne(ctx, filter, set, options.Update().SetUpsert(true))
+	return id, err
 }
 
 func (m MongoDBArticleDAO) SyncStatus(ctx context.Context, uid int64, id int64, status uint8) error {
-	//TODO implement me
-	panic("implement me")
+	filter := bson.D{bson.E{"id", id},
+		bson.E{"author_id", uid}}
+	sets := bson.D{bson.E{"$set", bson.D{bson.E{"status", status}}}}
+	res, err := m.col.UpdateOne(ctx, filter, sets)
+	if err != nil {
+		return err
+	}
+	if res.ModifiedCount != 1 {
+		return errors.New("更新失败，ID不对或者创作者不对")
+	}
+	_, err = m.liveCol.UpdateOne(ctx, filter, sets)
+	return err
 }
 
 func NewMongoDBAritcleDAO(mdb *mongo.Database, node *snowflake.Node) *MongoDBArticleDAO {
