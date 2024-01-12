@@ -3,6 +3,7 @@ module basic-go
 go 1.20
 
 require (
+	github.com/aws/aws-sdk-go v1.47.2
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/coocood/freecache v1.2.4
