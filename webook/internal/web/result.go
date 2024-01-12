@@ -11,3 +11,8 @@ type Result struct {
 type handler interface {
 	RegisterRoutes(s *gin.Engine)
 }
+
+type Page struct {
+	Limit  int
+	Offset int
+}

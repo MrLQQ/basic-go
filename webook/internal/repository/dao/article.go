@@ -13,10 +13,22 @@ type ArticleDAO interface {
 	UpdateById(ctx context.Context, entity Article) error
 	Sync(ctx context.Context, entity Article) (int64, error)
 	SyncStatus(ctx context.Context, uid int64, id int64, status uint8) error
+	GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]Article, error)
 }
 
 type ArticleGORMDAO struct {
 	db *gorm.DB
+}
+
+func (a *ArticleGORMDAO) GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]Article, error) {
+	var arts []Article
+	err := a.db.WithContext(ctx).
+		Where("author_id = ?", uid).
+		Offset(offset).
+		Limit(limit).
+		Order("utime DESC").
+		Find(&arts).Error
+	return arts, err
 }
 
 func (a *ArticleGORMDAO) SyncStatus(ctx context.Context, uid int64, id int64, status uint8) error {

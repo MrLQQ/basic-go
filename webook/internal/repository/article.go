@@ -4,7 +4,9 @@ import (
 	"basic-go/webook/internal/domain"
 	"basic-go/webook/internal/repository/dao"
 	"context"
+	"github.com/ecodeclub/ekit/slice"
 	"gorm.io/gorm"
+	"time"
 )
 
 type ArticleRepository interface {
@@ -12,6 +14,7 @@ type ArticleRepository interface {
 	Update(ctx context.Context, art domain.Article) error
 	Sync(ctx context.Context, art domain.Article) (int64, error)
 	SyncStatus(ctx context.Context, uid int64, id int64, status domain.ArticleStatus) error
+	GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]domain.Article, error)
 }
 
 type CachedArticleRepository struct {
@@ -21,6 +24,17 @@ type CachedArticleRepository struct {
 	authorDAO dao.ArticleAuthorDao
 
 	db *gorm.DB
+}
+
+func (c *CachedArticleRepository) GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]domain.Article, error) {
+	arts, err := c.dao.GetByAuthor(ctx, uid, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	return slice.Map[dao.Article, domain.Article](arts, func(idx int, src dao.Article) domain.Article {
+		return c.toDomain(src)
+	}), nil
 }
 
 func (c *CachedArticleRepository) SyncStatus(ctx context.Context, uid int64, id int64, status domain.ArticleStatus) error {
@@ -105,5 +119,19 @@ func (c CachedArticleRepository) toEntity(art domain.Article) dao.Article {
 		Content:  art.Content,
 		AuthorId: art.Author.Id,
 		Status:   art.Status.ToUint8(),
+	}
+}
+
+func (c CachedArticleRepository) toDomain(art dao.Article) domain.Article {
+	return domain.Article{
+		Id:      art.Id,
+		Title:   art.Title,
+		Content: art.Content,
+		Author: domain.Author{
+			Id: art.Id,
+		},
+		Ctime:  time.UnixMilli(art.Ctime),
+		Utime:  time.UnixMilli(art.Utime),
+		Status: domain.ArticleStatus(art.Status),
 	}
 }
