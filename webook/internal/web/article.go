@@ -153,6 +153,7 @@ func (h *ArticleHandler) List(ctx *gin.Context) {
 			return ArticleVo{
 				Id:       src.Id,
 				Title:    src.Title,
+				Abstract: src.Abstract(),
 				Content:  src.Content,
 				AuthorId: src.Author.Id,
 				Status:   src.Status.ToUint8(),

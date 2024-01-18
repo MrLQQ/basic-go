@@ -12,6 +12,15 @@ type Article struct {
 	Utime   time.Time
 }
 
+func (a Article) Abstract() string {
+	// 直接去前面一部分的内容
+	str := []rune(a.Content)
+	if len(str) > 128 {
+		str = str[:128]
+	}
+	return string(str)
+}
+
 type ArticleStatus uint8
 
 func (s ArticleStatus) ToUint8() uint8 {
