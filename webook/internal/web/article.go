@@ -8,6 +8,7 @@ import (
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -125,6 +126,57 @@ func (h *ArticleHandler) Withdraw(ctx *gin.Context) {
 }
 
 func (h *ArticleHandler) Detail(ctx *gin.Context) {
+	idstr := ctx.Param("id")
+	id, err := strconv.ParseInt(idstr, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Msg:  "参数错误",
+			Code: 4,
+		})
+		h.l.Warn("查询文章失败,id 格式不对",
+			logger.String("id", idstr),
+			logger.Error(err))
+		return
+	}
+	art, err := h.svc.GetById(ctx, id)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		h.l.Error("查询文章失败",
+			logger.Int64("id", id),
+			logger.Error(err))
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "OK",
+	})
+	uc := ctx.MustGet("user").(jwt.UserClaims)
+	if art.Author.Id != uc.Uid {
+		// 查看的文章，不是本人的。有人在捣乱
+		ctx.JSON(http.StatusOK, Result{
+			Msg:  "系统错误",
+			Code: 5,
+		})
+		h.l.Error("非法查询文章",
+			logger.Int64("id", id),
+			logger.Int64("uid", uc.Uid))
+		return
+	}
+
+	vo := ArticleVo{
+		Id:    art.Id,
+		Title: art.Title,
+		// 不需要摘要信息
+		//Abstract: art.Abstract(),
+		Content:  art.Content,
+		AuthorId: art.Author.Id,
+		Status:   art.Status.ToUint8(),
+		Ctime:    art.Ctime.Format(time.DateTime),
+		Utime:    art.Utime.Format(time.DateTime),
+	}
+	ctx.JSON(http.StatusOK, Result{Data: vo})
 
 }
 
@@ -154,7 +206,7 @@ func (h *ArticleHandler) List(ctx *gin.Context) {
 				Id:       src.Id,
 				Title:    src.Title,
 				Abstract: src.Abstract(),
-				Content:  src.Content,
+				//Content:  src.Content,
 				AuthorId: src.Author.Id,
 				Status:   src.Status.ToUint8(),
 				Ctime:    src.Ctime.Format(time.DateTime),

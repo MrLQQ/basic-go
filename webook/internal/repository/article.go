@@ -16,6 +16,7 @@ type ArticleRepository interface {
 	Sync(ctx context.Context, art domain.Article) (int64, error)
 	SyncStatus(ctx context.Context, uid int64, id int64, status domain.ArticleStatus) error
 	GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]domain.Article, error)
+	GetById(ctx context.Context, id int64) (domain.Article, error)
 }
 
 type CachedArticleRepository struct {
@@ -26,6 +27,24 @@ type CachedArticleRepository struct {
 	authorDAO dao.ArticleAuthorDao
 
 	db *gorm.DB
+}
+
+func (c *CachedArticleRepository) GetById(ctx context.Context, id int64) (domain.Article, error) {
+	res, err := c.cache.Get(ctx, id)
+	if err == nil {
+		return res, nil
+	}
+	art, err := c.dao.GetById(ctx, id)
+	if err != nil {
+		return domain.Article{}, err
+	}
+	go func() {
+		er := c.cache.Set(ctx, art)
+		if er != nil {
+			// 记录日志
+		}
+	}()
+	return c.toDomain(art), nil
 }
 
 func (c *CachedArticleRepository) GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]domain.Article, error) {
@@ -50,15 +69,23 @@ func (c *CachedArticleRepository) GetByAuthor(ctx context.Context, uid int64, of
 		return c.toDomain(src)
 	})
 	go func() {
-		// 缓存回写失败，不一定是大问题，但有可能是大问题
-		err = c.cache.SetFirstPage(ctx, uid, res)
-		// 网络有问题 或者  redis崩了
-		if err != nil {
-			// 记录日志
-			// 我需要监控这里
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		if offset == 0 && limit == 100 {
+			// 缓存回写失败，不一定是大问题，但有可能是大问题
+			err = c.cache.SetFirstPage(ctx, uid, res)
+			// 网络有问题 或者  redis崩了
+			if err != nil {
+				// 记录日志
+				// 我需要监控这里
+			}
 		}
 	}()
-
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		c.preCache(ctx, arts)
+	}()
 	return res, nil
 }
 
@@ -189,5 +216,15 @@ func (c CachedArticleRepository) toDomain(art dao.Article) domain.Article {
 		Ctime:  time.UnixMilli(art.Ctime),
 		Utime:  time.UnixMilli(art.Utime),
 		Status: domain.ArticleStatus(art.Status),
+	}
+}
+
+func (c *CachedArticleRepository) preCache(ctx context.Context, arts []dao.Article) {
+	const size = 1024 * 1024
+	if len(arts) > 0 && len(arts[0].Content) < size {
+		err := c.cache.Set(ctx, arts[0])
+		if err != nil {
+			// 记录缓存
+		}
 	}
 }

@@ -2,6 +2,7 @@ package cache
 
 import (
 	"basic-go/webook/internal/domain"
+	"basic-go/webook/internal/repository/dao"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,8 @@ type ArticleCache interface {
 	GetFirstPage(ctx context.Context, uid int64) ([]domain.Article, error)
 	SetFirstPage(ctx context.Context, uid int64, res []domain.Article) error
 	DelFirstPage(ctx context.Context, uid int64) error
+	Get(ctx context.Context, id int64) (domain.Article, error)
+	Set(ctx context.Context, art dao.Article) error
 }
 
 type ArticleRedisCache struct {
