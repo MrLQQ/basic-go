@@ -2,7 +2,7 @@ package domain
 
 type UserProfile struct {
 	Id       int64
-	User_id  string
+	User_id  int64
 	Nickname string
 	Birthday string
 	About_me string

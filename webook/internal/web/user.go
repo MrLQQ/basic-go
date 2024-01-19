@@ -6,7 +6,6 @@ import (
 	ijwt "basic-go/webook/internal/web/jwt"
 	"basic-go/webook/pkg/logger"
 	"errors"
-	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -311,9 +310,8 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	user := fmt.Sprintf("%v", userID)
 	err = h.svc.Edit(ctx, domain.UserProfile{
-		User_id:  user,
+		User_id:  userID,
 		Nickname: req.Nickname,
 		Birthday: req.Birthday,
 		About_me: req.AboutMe,
@@ -344,9 +342,8 @@ func (h *UserHandler) Profile(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	user := fmt.Sprintf("%v", userID)
 	profile, err := h.svc.Profile(ctx, domain.UserProfile{
-		User_id: user,
+		User_id: userID,
 	})
 	if err != nil {
 		h.l.Error("系统异常", logger.Error(err))

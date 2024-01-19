@@ -12,7 +12,7 @@ import (
 var ErrKeyNotExist = redis.Nil
 
 type UserCache interface {
-	Get(ctx context.Context, userId string) (domain.UserProfile, error)
+	Get(ctx context.Context, userId int64) (domain.UserProfile, error)
 	Set(ctx context.Context, du domain.UserProfile) error
 }
 
@@ -21,7 +21,7 @@ type RedisUserCache struct {
 	expiration time.Duration
 }
 
-func (c *RedisUserCache) Get(ctx context.Context, userId string) (domain.UserProfile, error) {
+func (c *RedisUserCache) Get(ctx context.Context, userId int64) (domain.UserProfile, error) {
 	key := c.key(userId)
 	// 假定这个地方使用json序列化，然后可以使用给反序列化data
 	data, err := c.cmd.Get(ctx, key).Result()
@@ -42,7 +42,7 @@ func (c *RedisUserCache) Set(ctx context.Context, du domain.UserProfile) error {
 	return c.cmd.Set(ctx, key, data, c.expiration).Err()
 }
 
-func (c *RedisUserCache) key(userId string) string {
+func (c *RedisUserCache) key(userId int64) string {
 	return fmt.Sprintf("user:info:%s", userId)
 }
 

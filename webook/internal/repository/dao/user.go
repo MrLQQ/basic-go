@@ -113,7 +113,7 @@ type User struct {
 type UserProfile struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
 	// 设置唯一索引
-	User_id  string `gorm:"unique"`
+	User_id  int64 `gorm:"unique"`
 	Nickname string
 	Birthday string
 	About_me string

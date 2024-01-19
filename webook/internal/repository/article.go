@@ -17,16 +17,52 @@ type ArticleRepository interface {
 	SyncStatus(ctx context.Context, uid int64, id int64, status domain.ArticleStatus) error
 	GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]domain.Article, error)
 	GetById(ctx context.Context, id int64) (domain.Article, error)
+	GetPubById(ctx context.Context, id int64) (domain.Article, error)
 }
 
 type CachedArticleRepository struct {
 	dao   dao.ArticleDAO
 	cache cache.ArticleCache
+	// 因为如果你直接访问 UserDAO，你就绕开了repository
+	// repository 一般都有缓存机制
+	userRepo UserRepository
 
 	readerDAO dao.ArticleReaderDao
 	authorDAO dao.ArticleAuthorDao
 
 	db *gorm.DB
+}
+
+func (c *CachedArticleRepository) GetPubById(ctx context.Context, id int64) (domain.Article, error) {
+	res, err := c.cache.GetPub(ctx, id)
+	if err == nil {
+		return res, err
+	}
+	art, err := c.dao.GetPubById(ctx, id)
+	if err != nil {
+		return domain.Article{}, err
+	}
+	// 我现在要去查询对应User信息，拿到创作者信息
+	res = c.toDomain(dao.Article(art))
+	authorProfile, err := c.userRepo.Profile(ctx, domain.UserProfile{
+		User_id: art.AuthorId,
+	})
+	if err != nil {
+		return domain.Article{}, err
+		// 两种返回方式，如果取用户信息出现错误，仍可以正常返回文章信息
+		// 但是此种返回方式需要记录日志
+		// return res, nil
+	}
+	res.Author.Name = authorProfile.Nickname
+	go func() {
+		ctx, canncel := context.WithTimeout(context.Background(), time.Second)
+		defer canncel()
+		er := c.cache.SetPub(ctx, res)
+		if er != nil {
+			// 记录日志
+		}
+	}()
+	return res, nil
 }
 
 func (c *CachedArticleRepository) GetById(ctx context.Context, id int64) (domain.Article, error) {
@@ -38,13 +74,14 @@ func (c *CachedArticleRepository) GetById(ctx context.Context, id int64) (domain
 	if err != nil {
 		return domain.Article{}, err
 	}
+	res = c.toDomain(art)
 	go func() {
-		er := c.cache.Set(ctx, art)
+		er := c.cache.Set(ctx, res)
 		if er != nil {
 			// 记录日志
 		}
 	}()
-	return c.toDomain(art), nil
+	return res, nil
 }
 
 func (c *CachedArticleRepository) GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]domain.Article, error) {
@@ -84,7 +121,7 @@ func (c *CachedArticleRepository) GetByAuthor(ctx context.Context, uid int64, of
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		c.preCache(ctx, arts)
+		c.preCache(ctx, res)
 	}()
 	return res, nil
 }
@@ -108,6 +145,23 @@ func (c *CachedArticleRepository) Sync(ctx context.Context, art domain.Article) 
 			// 也要记录日志
 		}
 	}
+	// 在这里尝试，设置缓存
+	go func() {
+		// 你可以灵活设置过期时间
+		user, er := c.userRepo.Profile(ctx, domain.UserProfile{User_id: art.Author.Id})
+		if er != nil {
+			// 要记录日志
+			return
+		}
+		art.Author = domain.Author{
+			Id:   user.User_id,
+			Name: user.Nickname,
+		}
+		er = c.cache.SetPub(ctx, art)
+		if er != nil {
+			// 记录日志
+		}
+	}()
 	return id, err
 }
 
@@ -219,7 +273,7 @@ func (c CachedArticleRepository) toDomain(art dao.Article) domain.Article {
 	}
 }
 
-func (c *CachedArticleRepository) preCache(ctx context.Context, arts []dao.Article) {
+func (c *CachedArticleRepository) preCache(ctx context.Context, arts []domain.Article) {
 	const size = 1024 * 1024
 	if len(arts) > 0 && len(arts[0].Content) < size {
 		err := c.cache.Set(ctx, arts[0])

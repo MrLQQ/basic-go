@@ -33,6 +33,9 @@ func (h *ArticleHandler) RegisterRoutes(server *gin.Engine) {
 	// 按照道理来说，这边就是get方法
 	// /list?offset=?&limit=?
 	g.POST("/list", h.List)
+
+	pub := g.Group("/pub")
+	pub.GET("/:id", h.PubDetail)
 }
 
 // 接受Article输入，返回一个ID，文章的ID
@@ -213,5 +216,45 @@ func (h *ArticleHandler) List(ctx *gin.Context) {
 				Utime:    src.Utime.Format(time.DateTime),
 			}
 		}),
+	})
+}
+
+func (h *ArticleHandler) PubDetail(ctx *gin.Context) {
+	idstr := ctx.Param("id")
+	id, err := strconv.ParseInt(idstr, 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Msg:  "参数错误",
+			Code: 4,
+		})
+		h.l.Warn("查询文章失败,id 格式不对",
+			logger.String("id", idstr),
+			logger.Error(err))
+		return
+	}
+
+	art, err := h.svc.GetPubById(ctx, id)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Msg:  "系统错误",
+			Code: 4,
+		})
+		h.l.Warn("查询文章失败,系统错误",
+			logger.Error(err))
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Data: ArticleVo{
+			Id:    art.Id,
+			Title: art.Title,
+
+			Content:    art.Content,
+			AuthorId:   art.Author.Id,
+			AuthorName: art.Author.Name,
+
+			Status: art.Status.ToUint8(),
+			Ctime:  art.Ctime.Format(time.DateTime),
+			Utime:  art.Utime.Format(time.DateTime),
+		},
 	})
 }
