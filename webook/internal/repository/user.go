@@ -6,7 +6,6 @@ import (
 	"basic-go/webook/internal/repository/dao"
 	"context"
 	"database/sql"
-	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -20,12 +19,21 @@ type UserRepository interface {
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
 	Edit(ctx context.Context, profile domain.UserProfile) error
 	Profile(ctx context.Context, profile domain.UserProfile) (domain.UserProfile, error)
-	FindByWechat(ctx *gin.Context, openId string) (domain.User, error)
+	FindByWechat(ctx context.Context, openId string) (domain.User, error)
+	GetUserById(ctx context.Context, user domain.User) (domain.User, error)
 }
 
 type CacheUserRepository struct {
 	dao   dao.UserDao
 	cache cache.UserCache
+}
+
+func (repo *CacheUserRepository) GetUserById(ctx context.Context, user domain.User) (domain.User, error) {
+	u, err := repo.dao.GetUserById(ctx, user)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return repo.toDomainUser(u), nil
 }
 
 func NewCacheUserRepository(dao dao.UserDao, c cache.UserCache) UserRepository {
@@ -121,7 +129,7 @@ func (repo *CacheUserRepository) FindByPhone(ctx context.Context, phone string) 
 	return repo.toDomainUser(u), nil
 }
 
-func (repo *CacheUserRepository) FindByWechat(ctx *gin.Context, openId string) (domain.User, error) {
+func (repo *CacheUserRepository) FindByWechat(ctx context.Context, openId string) (domain.User, error) {
 	ue, err := repo.dao.FindByWechat(ctx, openId)
 	if err != nil {
 		return domain.User{}, err

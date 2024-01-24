@@ -13,14 +13,15 @@ const onFinish = (values: any) => {
     axios.post("/users/edit", values)
         .then((res) => {
             if(res.status != 200) {
-                alert(res.statusText);
+                console.log("/users/edit -- res:",res)
+                alert(res.data);
                 return
             }
             if (res.data?.code == 0) {
                 router.push('/users/profile')
                 return
             }
-            alert(res.data);
+            console.log("更新的结果：",res)
         }).catch((err) => {
         alert(err);
     })

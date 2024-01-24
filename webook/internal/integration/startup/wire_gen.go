@@ -23,8 +23,9 @@ func InitWebServer() *gin.Engine {
 	userRepository := repository.NewCacheUserRepository(userDAO, userCache)
 	userService := service.NewuserService(userRepository)
 	codeCache := cache.NewRedisCodeCache(cmdable)
+	articleRedisCache := cache.NewArticleRedisCache(cmdable)
 	codeRepository := repository.NewCacheCodeRepository(codeCache)
-	articleRepository := repository.NewCachedArticleRepository(articleDAO)
+	articleRepository := repository.NewCachedArticleRepository(articleDAO, articleRedisCache)
 	smsService := ioc.InitSMSService(logger)
 	wechatService := InitWechatService(logger)
 	codeService := service.NewCodeCacheService(codeRepository, smsService)
@@ -37,11 +38,13 @@ func InitWebServer() *gin.Engine {
 }
 
 func InitArticleHandler(dao dao.ArticleDAO) *web.ArticleHandler {
+	cmdable := ioc.InitRedis()
 	loggerV1 := InitLogger()
 	//db := InitDB()
 	//articleDAO := dao.NewArticleGORMDAO(db)
+	articleRedisCache := cache.NewArticleRedisCache(cmdable)
 	articleDAO := dao
-	articleRepository := repository.NewCachedArticleRepository(articleDAO)
+	articleRepository := repository.NewCachedArticleRepository(articleDAO, articleRedisCache)
 	articleService := service.NewArticleService(articleRepository)
 	articleHandler := web.NewArticleHandler(articleService, loggerV1)
 	return articleHandler

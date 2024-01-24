@@ -17,9 +17,10 @@ function Page() {
                 setLoading(false)
             })
     }, [])
-
+    console.log("profile数据：",data)
     if (isLoading) return <p>Loading...</p>
     if (!data) return <p>No profile data</p>
+    console.log("data.Nickname：",data.Nickname)
 
     return (
         <ProDescriptions

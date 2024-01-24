@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.2.6",
     "@ant-design/pro-components": "^2.6.12",
     "@tiptap/pm": "^2.1.8",
     "@tiptap/react": "^2.1.8",
@@ -21,11 +22,12 @@
     "antd": "^5.7.0",
     "autoprefixer": "10.4.14",
     "axios": "^1.4.0",
+    "cnpm": "^9.4.0",
     "eslint": "8.44.0",
     "eslint-config-next": "13.4.10",
     "moment": "^2.29.4",
-    "next": "13.4.10",
-    "postcss": "8.4.26",
+    "next": "^13.5.6",
+    "postcss": "^8.4.33",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-router": "^6.14.1",

@@ -120,7 +120,7 @@ func (h *UserHandler) SendSMSLoginCode(ctx *gin.Context) {
 	err := h.codeSvc.Send(ctx, bizLogin, req.Phone)
 	switch err {
 	case nil:
-		ctx.JSON(http.StatusOK, Result{Msg: "发送成功"})
+		ctx.JSON(http.StatusOK, Result{Code: 0, Msg: "发送成功"})
 	case service.ErrCodeSendTooMany:
 		h.l.Warn("频发发送验证码", logger.Error(err))
 		ctx.JSON(http.StatusOK, Result{Code: 4, Msg: "短信发送太频繁，请稍后再试"})
@@ -319,10 +319,10 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 	switch {
 	case err == nil:
 		h.l.Info("更新成功")
-		ctx.String(http.StatusOK, "更新成功")
+		ctx.JSON(http.StatusOK, Result{Code: 0, Data: "更新成功"})
 	default:
 		h.l.Error("系统异常", logger.Error(err))
-		ctx.String(http.StatusOK, "系统错误")
+		ctx.JSON(http.StatusOK, Result{Code: 5, Data: "系统错误"})
 	}
 
 }
@@ -330,9 +330,11 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 func (h *UserHandler) Profile(ctx *gin.Context) {
 	us := ctx.MustGet("user").(ijwt.UserClaims)
 	type Profile struct {
-		Nickname string `json:"nickname"`
-		Birthday string `json:"birthday"`
-		AboutMe  string `json:"aboutMe"`
+		Email    string `json:"Email"`
+		Phone    string `json:"Phone"`
+		Nickname string `json:"Nickname"`
+		Birthday string `json:"Birthday"`
+		AboutMe  string `json:"AboutMe"`
 	}
 	//sess := sessions.Default(ctx)
 	//userID := sess.Get("userId")
@@ -349,7 +351,16 @@ func (h *UserHandler) Profile(ctx *gin.Context) {
 		h.l.Error("系统异常", logger.Error(err))
 		ctx.String(http.StatusOK, "系统错误")
 	}
+	user, err := h.svc.GetUserById(ctx, domain.User{
+		Id: userID,
+	})
+	if err != nil {
+		h.l.Error("系统异常", logger.Error(err))
+		ctx.String(http.StatusOK, "系统错误")
+	}
 	userProfile := Profile{
+		Email:    user.Email,
+		Phone:    user.Phone,
 		Nickname: profile.Nickname,
 		Birthday: profile.Birthday,
 		AboutMe:  profile.About_me,

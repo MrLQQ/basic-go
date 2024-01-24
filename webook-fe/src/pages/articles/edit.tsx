@@ -31,7 +31,13 @@ function Page() {
         })
     };
 
-    const [data, setData] = useState<Article>( {id: 0, title: "", content: ""})
+    const [data, setData] = useState<Article>( {
+        collectCnt: 0,
+        collected: false,
+        likeCnt: 0,
+        liked: false,
+        readCnt: 0,
+        id: 0, title: "", content: ""})
     const [isLoading, setLoading] = useState(false)
     useEffect(() => {
         const artID = router.query["id"]
@@ -57,7 +63,7 @@ function Page() {
             </Form.Item>
             <WangEditor html={html} setHtmlFn={setHtml}/>
             <Form.Item>
-                <Button type={"primary"}>保存</Button>
+                <Button type={"primary"} htmlType="submit">保存</Button>
             </Form.Item>
         </Form>
     </>

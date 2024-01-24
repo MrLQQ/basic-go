@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"basic-go/webook/internal/domain"
 	"context"
 	"database/sql"
 	"errors"
@@ -21,10 +22,17 @@ type UserDao interface {
 	Profile(ctx context.Context, userprofile UserProfile) (UserProfile, error)
 	FindByPhone(ctx context.Context, phone string) (User, error)
 	FindByWechat(ctx context.Context, openId string) (User, error)
+	GetUserById(ctx context.Context, user domain.User) (User, error)
 }
 
 type GORMUserDao struct {
 	db *gorm.DB
+}
+
+func (dao *GORMUserDao) GetUserById(ctx context.Context, user domain.User) (User, error) {
+	var u User
+	err := dao.db.WithContext(ctx).Table("users").Where("id=?", user.Id).First(&u).Error
+	return u, err
 }
 
 func (dao *GORMUserDao) FindByWechat(ctx context.Context, openId string) (User, error) {

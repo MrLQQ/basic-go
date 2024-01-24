@@ -5,7 +5,6 @@ import (
 	"basic-go/webook/internal/repository"
 	"context"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -21,12 +20,17 @@ type UserService interface {
 	Edit(ctx context.Context, userProfile domain.UserProfile) error
 	Profile(ctx context.Context, userProfile domain.UserProfile) (domain.UserProfile, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
-	FindOrCreateByWechat(ctx *gin.Context, info domain.WechatInfo) (domain.User, error)
+	FindOrCreateByWechat(ctx context.Context, info domain.WechatInfo) (domain.User, error)
+	GetUserById(ctx context.Context, user domain.User) (domain.User, error)
 }
 
 type userService struct {
 	repo repository.UserRepository
 	//logger *zap.Logger
+}
+
+func (svc *userService) GetUserById(ctx context.Context, user domain.User) (domain.User, error) {
+	return svc.repo.GetUserById(ctx, user)
 }
 
 func NewuserService(repo repository.UserRepository) UserService {
@@ -93,7 +97,7 @@ func (svc *userService) FindOrCreate(ctx context.Context, phone string) (domain.
 	return svc.repo.FindByPhone(ctx, phone)
 }
 
-func (svc *userService) FindOrCreateByWechat(ctx *gin.Context, wechatInfo domain.WechatInfo) (domain.User, error) {
+func (svc *userService) FindOrCreateByWechat(ctx context.Context, wechatInfo domain.WechatInfo) (domain.User, error) {
 	// 先查找，是否存在
 	u, err := svc.repo.FindByWechat(ctx, wechatInfo.OpenId)
 	if !errors.Is(err, repository.ErrUserNotFound) {
