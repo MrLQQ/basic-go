@@ -13,12 +13,19 @@ import (
 )
 
 type ArticleHandler struct {
-	svc service.ArticleService
-	l   logger.LoggerV1
+	svc     service.ArticleService
+	intrSvc service.InteractiveService
+	l       logger.LoggerV1
+	biz     string
 }
 
-func NewArticleHandler(svc service.ArticleService, l logger.LoggerV1) *ArticleHandler {
-	return &ArticleHandler{svc: svc, l: l}
+func NewArticleHandler(svc service.ArticleService, interSvc service.InteractiveService, l logger.LoggerV1) *ArticleHandler {
+	return &ArticleHandler{
+		svc:     svc,
+		intrSvc: interSvc,
+		biz:     "article",
+		l:       l,
+	}
 }
 
 func (h *ArticleHandler) RegisterRoutes(server *gin.Engine) {
@@ -237,12 +244,13 @@ func (h *ArticleHandler) PubDetail(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusOK, Result{
 			Msg:  "系统错误",
-			Code: 4,
+			Code: 5,
 		})
 		h.l.Warn("查询文章失败,系统错误",
 			logger.Error(err))
 		return
 	}
+	err = h.intrSvc.IncrReadCnt(ctx, h.biz, art.Id)
 	ctx.JSON(http.StatusOK, Result{
 		Data: ArticleVo{
 			Id:    art.Id,
