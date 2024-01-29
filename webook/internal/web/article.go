@@ -5,6 +5,7 @@ import (
 	"basic-go/webook/internal/service"
 	"basic-go/webook/internal/web/jwt"
 	"basic-go/webook/pkg/logger"
+	"context"
 	"github.com/ecodeclub/ekit/slice"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -250,7 +251,18 @@ func (h *ArticleHandler) PubDetail(ctx *gin.Context) {
 			logger.Error(err))
 		return
 	}
-	err = h.intrSvc.IncrReadCnt(ctx, h.biz, art.Id)
+	go func() {
+		// 1、如果你想摆脱原本很主链路的超时控制，你就创建一个新的
+		// 2、如果你不想，你就用ctx
+		newCtx, canncel := context.WithTimeout(context.Background(), time.Second)
+		defer canncel()
+		err = h.intrSvc.IncrReadCnt(newCtx, h.biz, art.Id)
+		if err != nil {
+			h.l.Error("更新阅读数失败",
+				logger.Int64("aid", art.Id),
+				logger.Error(err))
+		}
+	}()
 	ctx.JSON(http.StatusOK, Result{
 		Data: ArticleVo{
 			Id:    art.Id,

@@ -30,9 +30,11 @@ func (i *InteractiveRedisCache) IncrReadCntIfPresent(ctx context.Context, biz st
 	key := i.key(biz, bizId)
 	// 不是特别需要处理res
 	//res, err := i.client.Eval(ctx, luaIncrCnt, []string{key}, fieldReadCnt, 1).Int()
-	return i.client.Eval(ctx, luaIncrCnt, []string{key}, fieldReadCnt, 1).Err()
+	i2, err := i.client.Eval(ctx, luaIncrCnt, []string{key}, fieldReadCnt, 1).Int()
+	fmt.Sprint(i2)
+	return err
 }
 
 func (i *InteractiveRedisCache) key(biz string, bizId int64) string {
-	return fmt.Sprintf("interactive:article:%s:%d", biz, bizId)
+	return fmt.Sprintf("interactive:%s:%d", biz, bizId)
 }

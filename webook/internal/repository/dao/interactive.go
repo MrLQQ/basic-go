@@ -25,8 +25,8 @@ func (dao *GORMInteractiveDAO) IncrReadCnt(ctx context.Context, biz string, bizI
 	now := time.Now().UnixMilli()
 	return dao.db.WithContext(ctx).Clauses(clause.OnConflict{
 		DoUpdates: clause.Assignments(map[string]interface{}{
-			"read_cntt": gorm.Expr("`read_cnt` + 1"),
-			"utime":     now,
+			"read_cnt": gorm.Expr("`read_cnt` + 1"),
+			"utime":    now,
 		}),
 	}).Create(&Interactive{
 		Biz:     biz,
@@ -42,11 +42,34 @@ type Interactive struct {
 
 	// 创建联合索引<bizid,biz>
 	BizId int64  `gorm:"uniqueIndex:biz_type_id"`
-	Biz   string `gorm:"uniqueIndex:biz_type_id"`
+	Biz   string `gorm:"type:varchar(128);uniqueIndex:biz_type_id"`
 
 	ReadCnt    int64
 	LikeCnt    int64
 	CollectCnt int64
 	Utime      int64
 	Ctime      int64
+}
+
+type UserLikeBiz struct {
+	Id     int64  `gorm:"primaryKey,autoIncrement"`
+	Uid    int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+	BizId  int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+	Biz    string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
+	Status int
+	Utime  int64
+	Ctime  int64
+}
+
+type UserCollectionBiz struct {
+	Id int64 `gorm:"primaryKey,autoIncrement"`
+	// 这边还是保留了了唯一索引
+	Uid   int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+	BizId int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+	Biz   string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
+	// 收藏夹的ID
+	// 收藏夹ID本身有索引
+	Cid   int64 `gorm:"index"`
+	Utime int64
+	Ctime int64
 }
