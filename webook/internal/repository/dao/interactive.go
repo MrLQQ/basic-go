@@ -9,10 +9,67 @@ import (
 
 type InteractiveDAO interface {
 	IncrReadCnt(ctx context.Context, biz string, bizId int64) error
+	InsertLikeInfo(ctx context.Context, biz string, id int64, uid int64) error
+	DeleteLikeInfo(ctx context.Context, biz string, id int64, uid int64) error
 }
 
 type GORMInteractiveDAO struct {
 	db *gorm.DB
+}
+
+func (dao *GORMInteractiveDAO) InsertLikeInfo(ctx context.Context, biz string, id int64, uid int64) error {
+	now := time.Now().UnixMilli()
+	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.Clauses(clause.OnConflict{
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"utime":  now,
+				"status": 1,
+			}),
+		}).Create(&UserLikeBiz{
+			Uid:    uid,
+			Biz:    biz,
+			BizId:  id,
+			Status: 1,
+			Utime:  now,
+			Ctime:  now,
+		}).Error
+		if err != nil {
+			return err
+		}
+		return tx.WithContext(ctx).Clauses(clause.OnConflict{
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"like_cnt": gorm.Expr("`like_cnt` + 1"),
+				"utime":    now,
+			}),
+		}).Create(&Interactive{
+			Biz:     biz,
+			BizId:   id,
+			LikeCnt: 1,
+			Ctime:   now,
+			Utime:   now,
+		}).Error
+	})
+}
+
+func (dao *GORMInteractiveDAO) DeleteLikeInfo(ctx context.Context, biz string, id int64, uid int64) error {
+	now := time.Now().UnixMilli()
+	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.Model(&UserLikeBiz{}).
+			Where("uid = ? and biz_id =? and biz =?", uid, id, biz).
+			Updates(map[string]interface{}{
+				"utime":  now,
+				"status": 0,
+			}).Error
+		if err != nil {
+			return err
+		}
+		return tx.Model(&Interactive{}).
+			Where("biz=? and biz_id=?", biz, id).
+			Updates(map[string]interface{}{
+				"like_cnt": gorm.Expr("`like_cnt` - 1 "),
+				"utime":    now,
+			}).Error
+	})
 }
 
 func NewGORMInteractiveDAO(db *gorm.DB) InteractiveDAO {
