@@ -45,7 +45,8 @@ func (h *ArticleHandler) RegisterRoutes(server *gin.Engine) {
 	pub := g.Group("/pub")
 	pub.GET("/:id", h.PubDetail)
 	// 传入一个参数，true就是点赞，false就是不点赞
-	pub.GET("/like", h.like)
+	pub.POST("/like", h.Like)
+	pub.POST("/collect", h.Collect)
 }
 
 // 接受Article输入，返回一个ID，文章的ID
@@ -281,7 +282,7 @@ func (h *ArticleHandler) PubDetail(ctx *gin.Context) {
 	})
 }
 
-func (h *ArticleHandler) like(c *gin.Context) {
+func (h *ArticleHandler) Like(c *gin.Context) {
 	type Req struct {
 		Id int64 `json:"id"`
 		// true是点赞，false是不点赞
@@ -315,4 +316,33 @@ func (h *ArticleHandler) like(c *gin.Context) {
 	c.JSON(http.StatusOK, Result{
 		Msg: "OK",
 	})
+}
+
+func (h *ArticleHandler) Collect(ctx *gin.Context) {
+	type Req struct {
+		Id  int64 `json:"id"`
+		Cid int64 `json:"cid"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	uc := ctx.MustGet("user").(jwt.UserClaims)
+
+	err := h.intrSvc.Collect(ctx, h.biz, req.Id, req.Cid, uc.Uid)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		h.l.Error("收藏失败",
+			logger.Error(err),
+			logger.Int64("aid", req.Id),
+			logger.Int64("uid", uc.Uid))
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "OK",
+	})
+
 }
