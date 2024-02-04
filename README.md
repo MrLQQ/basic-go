@@ -54,3 +54,4 @@
 * [切片:扩容](KnowledgeBase/切片扩容.md)
 * [BSON中的EDMA类型](KnowledgeBase/BSON中的EDMA类型.md)
 * [雪花算法](KnowledgeBase/雪花算法.md)
+* [Kafka 概念入门](KnowledgeBase/Kafka 概念入门.md)
