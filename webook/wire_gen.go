@@ -1,6 +1,7 @@
 package main
 
 import (
+	"basic-go/webook/internal/events/article"
 	"basic-go/webook/internal/repository"
 	"basic-go/webook/internal/repository/cache"
 	"basic-go/webook/internal/repository/dao"
@@ -8,10 +9,9 @@ import (
 	"basic-go/webook/internal/web"
 	ijwt "basic-go/webook/internal/web/jwt"
 	"basic-go/webook/ioc"
-	"github.com/gin-gonic/gin"
 )
 
-func InitWebServer() *gin.Engine {
+func InitWebServer() *App {
 	cmdable := ioc.InitRedis()
 	logger := ioc.InitLogger()
 	handler := ijwt.NewRedisJWTHandler(cmdable)
@@ -32,11 +32,19 @@ func InitWebServer() *gin.Engine {
 	smsService := ioc.InitSMSService(logger)
 	wechatService := ioc.InitWechatService(logger)
 	codeService := service.NewCodeCacheService(codeRepository, smsService)
-	articleService := service.NewArticleService(articleRepository)
+	client := ioc.InitSaramaClient()
+	syncProducer := ioc.InitSyncProducer(client)
+	producer := article.NewSaramaSyncProducer(syncProducer)
+	articleService := service.NewArticleService(articleRepository, producer)
+	v2 := ioc.InitConsumers()
 	interactiveService := service.NewInteractiveService(interactiveRepository)
 	userHandler := web.NewUserHandler(userService, handler, codeService, logger)
 	articleHandler := web.NewArticleHandler(articleService, interactiveService, logger)
 	wechatHandler := web.NewOAuth2WechatHandler(wechatService, handler, userService, logger)
 	engine := ioc.InitWebServer(v, userHandler, wechatHandler, articleHandler)
-	return engine
+	app := &App{
+		server:    engine,
+		consumers: v2,
+	}
+	return app
 }

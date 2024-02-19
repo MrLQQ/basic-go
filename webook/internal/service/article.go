@@ -2,6 +2,7 @@ package service
 
 import (
 	"basic-go/webook/internal/domain"
+	"basic-go/webook/internal/events/article"
 	"basic-go/webook/internal/repository"
 	"basic-go/webook/pkg/logger"
 	"context"
@@ -14,11 +15,12 @@ type ArticleService interface {
 	Withdraw(ctx context.Context, uid int64, id int64) error
 	GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]domain.Article, error)
 	GetById(ctx context.Context, id int64) (domain.Article, error)
-	GetPubById(ctx context.Context, id int64) (domain.Article, error)
+	GetPubById(ctx context.Context, id, uid int64) (domain.Article, error)
 }
 
 type articleService struct {
-	repo repository.ArticleRepository
+	repo     repository.ArticleRepository
+	producer article.Producer
 
 	//	V1写法专用
 	readerRepo repository.ArticleReaderRepository
@@ -26,8 +28,27 @@ type articleService struct {
 	l          logger.LoggerV1
 }
 
-func (a *articleService) GetPubById(ctx context.Context, id int64) (domain.Article, error) {
-	return a.repo.GetPubById(ctx, id)
+func (a *articleService) GetPubById(ctx context.Context, id, uid int64) (domain.Article, error) {
+	res, err := a.repo.GetPubById(ctx, id)
+	if err == nil {
+		//在这里发一个消息
+		er := a.producer.ProduceReadEvent(article.ReadEvent{
+			Aid: id,
+			Uid: uid,
+		})
+		if er != nil {
+			a.l.Error("发送 ReadEvent 失败",
+				logger.Int64("aid", id),
+				logger.Int64("uid", uid),
+				logger.Error(err))
+		}
+	}
+	go func() {
+		if err == nil {
+
+		}
+	}()
+	return res, err
 }
 
 func (a *articleService) GetById(ctx context.Context, id int64) (domain.Article, error) {
@@ -92,8 +113,13 @@ func NewArticleServiceV1(
 		l:          l,
 	}
 }
-func NewArticleService(repo repository.ArticleRepository) ArticleService {
-	return &articleService{repo: repo}
+
+func NewArticleService(repo repository.ArticleRepository,
+	producer article.Producer) ArticleService {
+	return &articleService{
+		repo:     repo,
+		producer: producer,
+	}
 }
 
 func (a *articleService) Save(ctx context.Context, art domain.Article) (int64, error) {

@@ -1,6 +1,7 @@
 package startup
 
 import (
+	"basic-go/webook/internal/events/article"
 	"basic-go/webook/internal/repository"
 	"basic-go/webook/internal/repository/cache"
 	"basic-go/webook/internal/repository/dao"
@@ -32,7 +33,10 @@ func InitWebServer() *gin.Engine {
 	smsService := ioc.InitSMSService(logger)
 	wechatService := InitWechatService(logger)
 	codeService := service.NewCodeCacheService(codeRepository, smsService)
-	articleService := service.NewArticleService(articleRepository)
+	client := ioc.InitSaramaClient()
+	syncProducer := ioc.InitSyncProducer(client)
+	producer := article.NewSaramaSyncProducer(syncProducer)
+	articleService := service.NewArticleService(articleRepository, producer)
 	interactiveService := service.NewInteractiveService(interactiveRepository)
 	userHandler := web.NewUserHandler(userService, handler, codeService, logger)
 	articleHandler := web.NewArticleHandler(articleService, interactiveService, logger)
@@ -52,7 +56,10 @@ func InitArticleHandler(Dao dao.ArticleDAO) *web.ArticleHandler {
 	interactiveDAO := dao.NewGORMInteractiveDAO(db)
 	articleRepository := repository.NewCachedArticleRepository(articleDAO, articleRedisCache)
 	interactiveRepository := repository.NewCachedInteractiveRepository(interactiveDAO, interactiveCache)
-	articleService := service.NewArticleService(articleRepository)
+	client := ioc.InitSaramaClient()
+	syncProducer := ioc.InitSyncProducer(client)
+	producer := article.NewSaramaSyncProducer(syncProducer)
+	articleService := service.NewArticleService(articleRepository, producer)
 	interactiveService := service.NewInteractiveService(interactiveRepository)
 	articleHandler := web.NewArticleHandler(articleService, interactiveService, loggerV1)
 	return articleHandler
