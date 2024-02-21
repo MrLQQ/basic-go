@@ -10,6 +10,8 @@ import (
 
 type InteractiveRepository interface {
 	IncrReadCnt(ctx context.Context, biz string, bizId int64) error
+	// BatchIncrReadCnt biz 和 bizId 长度必须一致
+	BatchIncrReadCnt(ctx context.Context, biz []string, bizId []int64) error
 	IncrLike(ctx context.Context, biz string, id int64, uid int64) error
 	DecrLike(ctx context.Context, biz string, id int64, uid int64) error
 	AddCollectionItem(ctx context.Context, biz string, id int64, cid int64, uid int64) error
@@ -22,6 +24,22 @@ type CachedInteractiveRepository struct {
 	dao   dao.InteractiveDAO
 	cache cache.InteractiveCache
 	l     logger.LoggerV1
+}
+
+func (c *CachedInteractiveRepository) BatchIncrReadCnt(ctx context.Context, bizs []string, bizIds []int64) error {
+	err := c.dao.BatchIncrReadCnt(ctx, bizs, bizIds)
+	if err != nil {
+		return err
+	}
+	go func() {
+		for i := 0; i < len(bizs); i++ {
+			er := c.cache.IncrReadCntIfPresent(ctx, bizs[i], bizIds[i])
+			if er != nil {
+				// 记录日志
+			}
+		}
+	}()
+	return nil
 }
 
 func (c *CachedInteractiveRepository) Get(ctx context.Context, biz string, id int64) (domain.Interactive, error) {
