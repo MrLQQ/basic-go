@@ -17,7 +17,8 @@ func TestConsumer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 	start := time.Now()
-	err = consumer.Consume(ctx, []string{"test_topic"}, ConsumerHandler{})
+	err = consumer.Consume(ctx,
+		[]string{"test_topic"}, ConsumerHandler{})
 	assert.NoError(t, err)
 	t.Log(time.Since(start).String())
 }
@@ -26,26 +27,22 @@ type ConsumerHandler struct {
 }
 
 func (c ConsumerHandler) Setup(session sarama.ConsumerGroupSession) error {
-	log.Println("这是Setup")
+	log.Println("这是 Setup")
 	//partitions := session.Claims()["test_topic"]
-	//var offset int64 = 0
 	//for _, part := range partitions {
 	//	session.ResetOffset("test_topic",
-	//		part, offset, "")
+	//		part, sarama.OffsetOldest, "")
 	//}
 	return nil
 }
 
 func (c ConsumerHandler) Cleanup(session sarama.ConsumerGroupSession) error {
-	log.Println("这是Cleanup")
+	log.Println("这是 Cleanup")
 	return nil
 }
 
-/*
-*
-该处实现了消息按批次处理，一秒钟内一次处理10条（异步消费），不足10条直接处理。然后统一提交
-*/
-func (c ConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (c ConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
+	claim sarama.ConsumerGroupClaim) error {
 	msgs := claim.Messages()
 	const batchSize = 10
 	for {
@@ -66,8 +63,8 @@ func (c ConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 				}
 				batch = append(batch, msg)
 				eg.Go(func() error {
-					// 并发处理（异步消费）
-					log.Println("接收到消息：", string(msg.Value))
+					// 并发处理
+					log.Println(string(msg.Value))
 					return nil
 				})
 			}
@@ -78,21 +75,20 @@ func (c ConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 			log.Println(err)
 			continue
 		}
-		// 批量消费，凑够了一批，然后处理
-		//log.Println(batch)
+		// 凑够了一批，然后你就处理
+		// log.Println(batch)
 
-		// 批量提交
 		for _, msg := range batch {
 			session.MarkMessage(msg, "")
 		}
-
 	}
 }
 
-func (c ConsumerHandler) ConsumeClaimV1(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (c ConsumerHandler) ConsumeClaimV1(session sarama.ConsumerGroupSession,
+	claim sarama.ConsumerGroupClaim) error {
 	msgs := claim.Messages()
 	for msg := range msgs {
-		log.Println("接收到消息：", string(msg.Value))
+		log.Println(string(msg.Value))
 		session.MarkMessage(msg, "")
 	}
 	return nil

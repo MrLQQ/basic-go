@@ -6,10 +6,9 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
-#  转发规则，【localhost的请求如果是/,就转发到webook-record的98端口（对应webook-service.yaml中的配置）】
   rules:
     - host: localhost
-    - http:
+      http:
         paths:
           - path: /
             pathType: Prefix

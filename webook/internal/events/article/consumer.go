@@ -1,10 +1,10 @@
 package article
 
 import (
-	"basic-go/webook/internal/repository"
-	"basic-go/webook/pkg/logger"
-	"basic-go/webook/pkg/samarax"
 	"context"
+	"gitee.com/geekbang/basic-go/webook/internal/repository"
+	"gitee.com/geekbang/basic-go/webook/pkg/logger"
+	"gitee.com/geekbang/basic-go/webook/pkg/samarax"
 	"github.com/IBM/sarama"
 	"time"
 )
@@ -15,7 +15,8 @@ type InteractiveReadEventConsumer struct {
 	l      logger.LoggerV1
 }
 
-func NewInteractiveReadEventConsumer(repo repository.InteractiveRepository, client sarama.Client, l logger.LoggerV1) *InteractiveReadEventConsumer {
+func NewInteractiveReadEventConsumer(repo repository.InteractiveRepository,
+	client sarama.Client, l logger.LoggerV1) *InteractiveReadEventConsumer {
 	return &InteractiveReadEventConsumer{repo: repo, client: client, l: l}
 }
 
@@ -50,7 +51,6 @@ func (i *InteractiveReadEventConsumer) StartV1() error {
 	}()
 	return err
 }
-
 func (i *InteractiveReadEventConsumer) BatchConsume(msgs []*sarama.ConsumerMessage,
 	events []ReadEvent) error {
 	bizs := make([]string, 0, len(events))

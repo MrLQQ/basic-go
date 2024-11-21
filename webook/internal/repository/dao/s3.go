@@ -26,13 +26,13 @@ func (a *ArticleS3DAO) SyncStatus(ctx context.Context, uid int64, id int64, stat
 				"utime":  now,
 				"status": status,
 			})
-		if res != nil {
+		if res.Error != nil {
 			return res.Error
 		}
 		if res.RowsAffected != 1 {
-			return errors.New("更新失败，ID不会或者作者不对")
+			return errors.New("ID 不对或者创作者不对")
 		}
-		return tx.Model(&PublishArticleV2{}).
+		return tx.Model(&PublishedArticleV2{}).
 			Where("id = ?", uid).
 			Updates(map[string]any{
 				"utime":  now,
@@ -45,7 +45,7 @@ func (a *ArticleS3DAO) SyncStatus(ctx context.Context, uid int64, id int64, stat
 	const statusPrivate = 3
 	if status == statusPrivate {
 		_, err = a.oss.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
-			Bucket: ekit.ToPtr[string]("webook-123"),
+			Bucket: ekit.ToPtr[string]("webook-1314583317"),
 			Key:    ekit.ToPtr[string](strconv.FormatInt(id, 10)),
 		})
 	}
@@ -69,25 +69,22 @@ func (a *ArticleS3DAO) Sync(ctx context.Context, art Article) (int64, error) {
 		}
 		art.Id = id
 		now := time.Now().UnixMilli()
-		pubArt := PublishArticleV2{
+		pubArt := PublishedArticleV2{
 			Id:       art.Id,
 			Title:    art.Title,
 			AuthorId: art.AuthorId,
-			Ctime:    art.Ctime,
-			Utime:    art.Utime,
+			Ctime:    now,
+			Utime:    now,
 			Status:   art.Status,
 		}
 		pubArt.Ctime = now
 		pubArt.Utime = now
 		err = tx.Clauses(clause.OnConflict{
-			// 对MySQL不起效，但是可以兼容别的方言
-			// Insert XXX on duplicate key set `title` = ?
-			// 别的方言： sqlite insert xx on conflict do updates
 			Columns: []clause.Column{{Name: "id"}},
 			DoUpdates: clause.Assignments(map[string]interface{}{
 				"title":  pubArt.Title,
 				"utime":  now,
-				"status": art.Status,
+				"status": pubArt.Status,
 			}),
 		}).Create(&pubArt).Error
 		return err
@@ -96,7 +93,7 @@ func (a *ArticleS3DAO) Sync(ctx context.Context, art Article) (int64, error) {
 		return 0, err
 	}
 	_, err = a.oss.PutObjectWithContext(ctx, &s3.PutObjectInput{
-		Bucket:      ekit.ToPtr[string]("webook-123"),
+		Bucket:      ekit.ToPtr[string]("webook-1314583317"),
 		Key:         ekit.ToPtr[string](strconv.FormatInt(art.Id, 10)),
 		Body:        bytes.NewReader([]byte(art.Content)),
 		ContentType: ekit.ToPtr[string]("text/plain;charset=utf-8"),
@@ -105,18 +102,16 @@ func (a *ArticleS3DAO) Sync(ctx context.Context, art Article) (int64, error) {
 }
 
 func NewArticleS3DAO(db *gorm.DB, oss *s3.S3) *ArticleS3DAO {
-	return &ArticleS3DAO{ArticleGORMDAO: ArticleGORMDAO{db: db},
-		oss: oss}
+	return &ArticleS3DAO{ArticleGORMDAO: ArticleGORMDAO{db: db}, oss: oss}
 }
 
-type PublishArticleV2 struct {
+type PublishedArticleV2 struct {
 	Id    int64  `gorm:"primaryKey,autoIncrement" bson:"id,omitempty"`
 	Title string `gorm:"type=varchar(4096)" bson:"title,omitempty"`
 	// 我要根据创作者ID来查询
 	AuthorId int64 `gorm:"index" bson:"author_id,omitempty"`
 	Status   uint8 `bson:"status,omitempty"`
-	// 创建时间
-	Ctime int64 `bson:"ctime,omitempty"`
+	Ctime    int64 `bson:"ctime,omitempty"`
 	// 更新时间
 	Utime int64 `bson:"utime,omitempty"`
 }

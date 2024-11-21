@@ -1,11 +1,11 @@
 package article
 
 import (
-	"basic-go/webook/internal/domain"
-	"basic-go/webook/internal/repository"
-	"basic-go/webook/pkg/logger"
-	"basic-go/webook/pkg/samarax"
 	"context"
+	"gitee.com/geekbang/basic-go/webook/internal/domain"
+	"gitee.com/geekbang/basic-go/webook/internal/repository"
+	"gitee.com/geekbang/basic-go/webook/pkg/logger"
+	"gitee.com/geekbang/basic-go/webook/pkg/samarax"
 	"github.com/IBM/sarama"
 	"time"
 )

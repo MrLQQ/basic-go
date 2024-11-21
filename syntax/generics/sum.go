@@ -12,17 +12,27 @@ func Sum[T Number](vals []T) T {
 	return res
 }
 
-func Max[T Number](vars []T) T {
-	t := vars[0]
-	for i := 1; i < len(vars); i++ {
-		if t < vars[i] {
-			t = vars[i]
+func Max[T Number](vals []T) T {
+	t := vals[0]
+	for i := 1; i < len(vals); i++ {
+		if t < vals[i] {
+			t = vals[i]
 		}
 	}
 	return t
 }
 
-func Find[T any](vals []T, filter func(T) bool) T {
+func Min[T Number](vals []T) T {
+	t := vals[0]
+	for i := 1; i < len(vals); i++ {
+		if t > vals[i] {
+			t = vals[i]
+		}
+	}
+	return t
+}
+
+func Find[T any](vals []T, filter func(t T) bool) T {
 	for _, v := range vals {
 		if filter(v) {
 			return v
@@ -32,15 +42,20 @@ func Find[T any](vals []T, filter func(T) bool) T {
 	return t
 }
 
-func Inster[T any](idx int, val T, vals []T) []T {
-	if idx < 0 || idx >= len(vals) {
+func Insert[T any](idx int, val T, vals []T) []T {
+	if idx < 0 || idx > len(vals) {
 		panic("idx不合法")
 	}
+
 	// 先扩容
 	vals = append(vals, val)
-	for i := len(vals) - 2; i >= idx; i-- {
-		vals[i], vals[i+1] = vals[i+1], vals[i]
+	// 这个写法
+	for i := len(vals) - 1; i > idx; i-- {
+		if i-1 >= 0 {
+			vals[i] = vals[i-1]
+		}
 	}
+	vals[idx] = val
 	return vals
 }
 

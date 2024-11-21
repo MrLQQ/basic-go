@@ -1,8 +1,6 @@
 package jwt
 
-import (
-	"github.com/gin-gonic/gin"
-)
+import "github.com/gin-gonic/gin"
 
 type Handler interface {
 	ClearToken(ctx *gin.Context) error

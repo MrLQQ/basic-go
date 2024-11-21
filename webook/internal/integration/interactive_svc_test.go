@@ -1,8 +1,8 @@
 package integration
 
 import (
-	"basic-go/webook/internal/integration/startup"
-	"basic-go/webook/internal/repository/dao"
+	"gitee.com/geekbang/basic-go/webook/internal/integration/startup"
+	"gitee.com/geekbang/basic-go/webook/internal/repository/dao"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

@@ -28,18 +28,25 @@ func (m *LoginMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+
 		now := time.Now()
-		// 如果知道需要刷新
+		//ctx.Next()// 执行业务
+		// 在执行业务之后搞点什么
+		//duration := time.Now().Sub(now)
+
+		// 我怎么知道，要刷新了呢？
+		// 假如说，我们的策略是每分钟刷一次，我怎么知道，已经过了一分钟？
 		const updateTimeKey = "update_time"
-		// 拿出上一次刷新时间
+		// 试着拿出上一次刷新时间
 		val := sess.Get(updateTimeKey)
 		lastUpdateTime, ok := val.(time.Time)
 		if val == nil || !ok || now.Sub(lastUpdateTime) > time.Second*10 {
-			// 第一次进来
+			// 你这是第一次进来
 			sess.Set(updateTimeKey, now)
 			sess.Set("userId", userId)
 			err := sess.Save()
 			if err != nil {
+				// 打日志
 				fmt.Println(err)
 			}
 		}

@@ -18,8 +18,9 @@ func main() {
 	}
 
 	db = db.Debug()
+
 	// 迁移 schema
-	// 初始化表结构
+	// 初始化你的表结构
 	db.AutoMigrate(&Product{})
 
 	// Create
@@ -33,9 +34,15 @@ func main() {
 	// Update - 将 product 的 price 更新为 200
 	db.Model(&product).Update("Price", 200)
 	// Update - 更新多个字段
-	db.Model(&product).Updates(Product{Price: 200, Code: "F42"}) // 仅更新非零值字段
+	// WHERE 条件是什么？
+	db.Model(&product).Updates(Product{Price: 200, Code: "F42"})
 	db.Model(&product).Updates(map[string]interface{}{"Price": 200, "Code": "F42"})
 
 	// Delete - 删除 product
 	db.Delete(&product, 1)
+
+	// 增删改
+	//db.Exec("UPDATE")
+
+	//res := db.Raw("SELECT").Rows()
 }

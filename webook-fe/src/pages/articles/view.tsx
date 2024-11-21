@@ -11,7 +11,6 @@ function Page(){
     const [isLoading, setLoading] = useState(false)
     const params = useSearchParams()
     const artID = params?.get("id")!
-    console.log("artID:",artID)
     useEffect(() => {
         setLoading(true)
         axios.get('/articles/pub/'+artID)
@@ -19,8 +18,6 @@ function Page(){
             .then((data) => {
                 setData(data.data)
                 setLoading(false)
-                console.log("/articles/pub/ --- res.data:",data)
-                console.log("/articles/pub/ --- res.data.data:",data.data)
             })
     }, [artID])
 

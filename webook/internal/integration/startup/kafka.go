@@ -5,7 +5,6 @@ import (
 )
 
 func InitSaramaClient() sarama.Client {
-
 	scfg := sarama.NewConfig()
 	scfg.Producer.Return.Successes = true
 	client, err := sarama.NewClient([]string{"localhost:9094"}, scfg)

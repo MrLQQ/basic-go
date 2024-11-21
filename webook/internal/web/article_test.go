@@ -1,17 +1,16 @@
 package web
 
 import (
-	"basic-go/webook/internal/domain"
-	"basic-go/webook/internal/service"
-	svcmocks "basic-go/webook/internal/service/mocks"
-	"basic-go/webook/internal/web/jwt"
-	"basic-go/webook/pkg/logger"
 	"bytes"
 	"encoding/json"
 	"errors"
+	"gitee.com/geekbang/basic-go/webook/internal/domain"
+	"gitee.com/geekbang/basic-go/webook/internal/service"
+	svcmocks "gitee.com/geekbang/basic-go/webook/internal/service/mocks"
+	ijwt "gitee.com/geekbang/basic-go/webook/internal/web/jwt"
+	"gitee.com/geekbang/basic-go/webook/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"net/http"
 	"net/http/httptest"
@@ -20,135 +19,147 @@ import (
 
 func TestArticleHandler_Publish(t *testing.T) {
 	testCases := []struct {
-		name    string
-		mock    func(ctrl *gomock.Controller) service.ArticleService
-		reqBody string
+		name string
+		mock func(ctrl *gomock.Controller) service.ArticleService
 
+		reqBody  string
 		wantCode int
 		wantRes  Result
 	}{
 		{
-			name: "新建立刻发表成功",
+			name: "新建并且发表成功",
 			mock: func(ctrl *gomock.Controller) service.ArticleService {
 				svc := svcmocks.NewMockArticleService(ctrl)
 				svc.EXPECT().Publish(gomock.Any(), domain.Article{
 					Title:   "我的标题",
 					Content: "我的内容",
 					Author: domain.Author{
-						Id: 789,
+						Id: 123,
 					},
 				}).Return(int64(1), nil)
 				return svc
 			},
 			reqBody: `
 {
-	"title":"我的标题",
-	"content": "我的内容"
-}`,
+ "title": "我的标题",
+ "content": "我的内容"
+}
+`,
 			wantCode: 200,
 			wantRes: Result{
-				// 在 json 反序列化的时候，因为 Data 是 any，所以默认是 float64
+				// 原本是 int64的，但是因为 Data 是any，所以在反序列化的时候，
+				// 用的 float64
 				Data: float64(1),
 			},
 		},
 		{
-			name: "已有帖子发表成功",
+			name: "修改并且发表成功",
 			mock: func(ctrl *gomock.Controller) service.ArticleService {
 				svc := svcmocks.NewMockArticleService(ctrl)
 				svc.EXPECT().Publish(gomock.Any(), domain.Article{
-					Id:      12,
-					Title:   "我的标题",
-					Content: "我的内容",
+					Id:      1,
+					Title:   "新的标题",
+					Content: "新的内容",
 					Author: domain.Author{
-						Id: 789,
+						Id: 123,
 					},
-				}).Return(int64(12), nil)
+				}).Return(int64(1), nil)
 				return svc
 			},
 			reqBody: `
 {
-	"id": 12,
-	"title":"我的标题",
-	"content": "我的内容"
-}`,
+"id": 1,
+ "title": "新的标题",
+ "content": "新的内容"
+}
+`,
 			wantCode: 200,
 			wantRes: Result{
-				// 在 json 反序列化的时候，因为 Data 是 any，所以默认是 float64
-				Data: float64(12),
+				// 原本是 int64的，但是因为 Data 是any，所以在反序列化的时候，
+				// 用的 float64
+				Data: float64(1),
 			},
 		},
 		{
-			name: "发表失败",
+			name: "输入有误",
 			mock: func(ctrl *gomock.Controller) service.ArticleService {
 				svc := svcmocks.NewMockArticleService(ctrl)
-				svc.EXPECT().Publish(gomock.Any(), domain.Article{
-					Title:   "我的标题",
-					Content: "我的内容",
-					Author: domain.Author{
-						Id: 789,
-					},
-				}).Return(int64(0), errors.New("mock 错误"))
 				return svc
 			},
 			reqBody: `
 {
-	"title":"我的标题",
-	"content": "我的内容"
-}`,
+"id": 1,
+ "title": "新的标题",
+ "content": "新的内容",,,,
+}
+`,
+			wantCode: 400,
+		},
+		{
+			name: "publish错误",
+			mock: func(ctrl *gomock.Controller) service.ArticleService {
+				svc := svcmocks.NewMockArticleService(ctrl)
+				svc.EXPECT().Publish(gomock.Any(), domain.Article{
+					Id:      1,
+					Title:   "新的标题",
+					Content: "新的内容",
+					Author: domain.Author{
+						Id: 123,
+					},
+				}).Return(int64(0), errors.New("mock error"))
+				return svc
+			},
+			reqBody: `
+{
+"id": 1,
+ "title": "新的标题",
+ "content": "新的内容"
+}
+`,
 			wantCode: 200,
 			wantRes: Result{
-				Code: 5,
+				// 原本是 int64的，但是因为 Data 是any，所以在反序列化的时候，
+				// 用的 float64
 				Msg:  "系统错误",
+				Code: 5,
 			},
-		},
-		{
-			name: "Bind 错误",
-			mock: func(ctrl *gomock.Controller) service.ArticleService {
-				svc := svcmocks.NewMockArticleService(ctrl)
-				return svc
-			},
-			reqBody: `
-{
-	"title":"我的标题",
-	"cont
-}`,
-			wantCode: http.StatusBadRequest,
 		},
 	}
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-			svc := tc.mock(ctrl)
-			// 利用 mock 来构造 UserHandler
-			hdl := NewArticleHandler(svc, logger.NewNoOpLogger())
 
-			// 注册路由
+			// 构造 handler
+			svc := tc.mock(ctrl)
+			hdl := NewArticleHandler(logger.NewNopLogger(), svc)
+
+			// 准备服务器，注册路由
 			server := gin.Default()
-			// 设置登录态
 			server.Use(func(ctx *gin.Context) {
-				ctx.Set("user", jwt.UserClaims{
-					Uid: 789,
+				ctx.Set("user", ijwt.UserClaims{
+					Uid: 123,
 				})
 			})
 			hdl.RegisterRoutes(server)
-			// 准备请求
+
+			// 准备Req和记录的 recorder
 			req, err := http.NewRequest(http.MethodPost,
-				"/articles/publish",
-				bytes.NewReader([]byte(tc.reqBody)))
-			require.NoError(t, err)
+				"/articles/publish", bytes.NewReader([]byte(tc.reqBody)))
+			assert.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
-			// 准备记录响应
 			recorder := httptest.NewRecorder()
+
 			// 执行
 			server.ServeHTTP(recorder, req)
-			// 断言
+			// 断言结果
 			assert.Equal(t, tc.wantCode, recorder.Code)
 			if recorder.Code != http.StatusOK {
 				return
 			}
 			var res Result
-			err = json.Unmarshal(recorder.Body.Bytes(), &res)
+			err = json.NewDecoder(recorder.Body).Decode(&res)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.wantRes, res)
 		})

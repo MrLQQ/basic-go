@@ -1,39 +1,40 @@
 package repository
 
 import (
-	"basic-go/webook/internal/domain"
-	"basic-go/webook/internal/repository/dao"
-	daomocks "basic-go/webook/internal/repository/dao/mocks"
 	"context"
+	"gitee.com/geekbang/basic-go/webook/internal/domain"
+	"gitee.com/geekbang/basic-go/webook/internal/repository/dao"
+	daomocks "gitee.com/geekbang/basic-go/webook/internal/repository/dao/mocks"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 	"testing"
 )
 
 func TestCachedArticleRepository_SyncV1(t *testing.T) {
-	testCase := []struct {
+	testCases := []struct {
 		name    string
-		mock    func(ctrl *gomock.Controller) (dao.ArticleAuthorDao, dao.ArticleReaderDao)
+		mock    func(ctrl *gomock.Controller) (dao.ArticleAuthorDAO, dao.ArticleReaderDAO)
 		art     domain.Article
 		wantId  int64
 		wantErr error
 	}{
 		{
 			name: "新建同步成功",
-			mock: func(ctrl *gomock.Controller) (dao.ArticleAuthorDao, dao.ArticleReaderDao) {
-				adao := daomocks.NewMockArticleAuthorDao(ctrl)
+			mock: func(ctrl *gomock.Controller) (dao.ArticleAuthorDAO, dao.ArticleReaderDAO) {
+				adao := daomocks.NewMockArticleAuthorDAO(ctrl)
 				adao.EXPECT().Create(gomock.Any(), dao.Article{
 					Title:    "我的标题",
 					Content:  "我的内容",
 					AuthorId: 123,
 				}).Return(int64(1), nil)
-				rdao := daomocks.NewMockArticleReaderDao(ctrl)
-				rdao.EXPECT().Upsert(gomock.Any(), dao.Article{
-					Id:       1,
-					Title:    "我的标题",
-					Content:  "我的内容",
-					AuthorId: 123,
-				}).Return(nil)
+				rdao := daomocks.NewMockArticleReaderDAO(ctrl)
+				rdao.EXPECT().
+					Upsert(gomock.Any(), dao.Article{
+						Id:       1,
+						Title:    "我的标题",
+						Content:  "我的内容",
+						AuthorId: 123,
+					}).Return(nil)
 				return adao, rdao
 			},
 			art: domain.Article{
@@ -47,21 +48,22 @@ func TestCachedArticleRepository_SyncV1(t *testing.T) {
 		},
 		{
 			name: "修改同步成功",
-			mock: func(ctrl *gomock.Controller) (dao.ArticleAuthorDao, dao.ArticleReaderDao) {
-				adao := daomocks.NewMockArticleAuthorDao(ctrl)
+			mock: func(ctrl *gomock.Controller) (dao.ArticleAuthorDAO, dao.ArticleReaderDAO) {
+				adao := daomocks.NewMockArticleAuthorDAO(ctrl)
 				adao.EXPECT().Update(gomock.Any(), dao.Article{
 					Id:       11,
 					Title:    "我的标题",
 					Content:  "我的内容",
 					AuthorId: 123,
 				}).Return(nil)
-				rdao := daomocks.NewMockArticleReaderDao(ctrl)
-				rdao.EXPECT().Upsert(gomock.Any(), dao.Article{
-					Id:       11,
-					Title:    "我的标题",
-					Content:  "我的内容",
-					AuthorId: 123,
-				}).Return(nil)
+				rdao := daomocks.NewMockArticleReaderDAO(ctrl)
+				rdao.EXPECT().
+					Upsert(gomock.Any(), dao.Article{
+						Id:       11,
+						Title:    "我的标题",
+						Content:  "我的内容",
+						AuthorId: 123,
+					}).Return(nil)
 				return adao, rdao
 			},
 			art: domain.Article{
@@ -75,7 +77,8 @@ func TestCachedArticleRepository_SyncV1(t *testing.T) {
 			wantId: 11,
 		},
 	}
-	for _, tc := range testCase {
+
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()

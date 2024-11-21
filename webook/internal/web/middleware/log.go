@@ -41,17 +41,22 @@ func (l *LogMiddlewareBuilder) Build() gin.HandlerFunc {
 			Path:   path,
 			Method: method,
 		}
-		if l.allowRespBody {
-			// Request.Body是一个Stream对象，只能读一次
+		if l.allowReqBody {
+			// Request.Body 是一个 Stream 对象，只能读一次
 			body, _ := ctx.GetRawData()
-			al.ReqBody = string(body)
-			// 将读取出来的body放回去
+			if len(body) > 2048 {
+				al.ReqBody = string(body[:2048])
+			} else {
+				al.ReqBody = string(body)
+			}
+			// 放回去
 			ctx.Request.Body = io.NopCloser(bytes.NewReader(body))
 			//ctx.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 		}
+
 		start := time.Now()
 
-		if l.allowReqBody {
+		if l.allowRespBody {
 			ctx.Writer = &responseWriter{
 				ResponseWriter: ctx.Writer,
 				al:             &al,
@@ -63,17 +68,19 @@ func (l *LogMiddlewareBuilder) Build() gin.HandlerFunc {
 			//duration := time.Now().Sub(start)
 			l.logFn(ctx, al)
 		}()
-		// 直接执行下一个middleware...直到业务逻辑
+
+		// 直接执行下一个 middleware...直到业务逻辑
 		ctx.Next()
+		// 在这里，你就拿到了响应
 	}
 }
 
 type AccessLog struct {
 	Path     string        `json:"path"`
 	Method   string        `json:"method"`
-	ReqBody  string        `json:"reqBody"`
+	ReqBody  string        `json:"req_body"`
 	Status   int           `json:"status"`
-	RespBody string        `json:"respBody"`
+	RespBody string        `json:"resp_body"`
 	Duration time.Duration `json:"duration"`
 }
 

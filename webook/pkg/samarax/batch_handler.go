@@ -1,9 +1,9 @@
 package samarax
 
 import (
-	"basic-go/webook/pkg/logger"
 	"context"
 	"encoding/json"
+	"gitee.com/geekbang/basic-go/webook/pkg/logger"
 	"github.com/IBM/sarama"
 	"log"
 	"time"
@@ -18,15 +18,15 @@ func NewBatchHandler[T any](l logger.LoggerV1, fn func(msgs []*sarama.ConsumerMe
 	return &BatchHandler[T]{fn: fn, l: l}
 }
 
-func (b BatchHandler[T]) Setup(session sarama.ConsumerGroupSession) error {
+func (b *BatchHandler[T]) Setup(session sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-func (b BatchHandler[T]) Cleanup(session sarama.ConsumerGroupSession) error {
+func (b *BatchHandler[T]) Cleanup(session sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-func (b BatchHandler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (b *BatchHandler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	msgs := claim.Messages()
 	const batchSize = 10
 	for {
@@ -49,7 +49,7 @@ func (b BatchHandler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 				var t T
 				err := json.Unmarshal(msg.Value, &t)
 				if err != nil {
-					b.l.Error("反序列化消息体失败",
+					b.l.Error("反序列消息体失败",
 						logger.String("topic", msg.Topic),
 						logger.Int32("partition", msg.Partition),
 						logger.Int64("offset", msg.Offset),
@@ -61,16 +61,15 @@ func (b BatchHandler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 			}
 		}
 		cancel()
-		// 批量消费，凑够了一批，然后处理
+		// 凑够了一批，然后你就处理
 		err := b.fn(batch, ts)
 		if err != nil {
 			b.l.Error("处理消息失败",
-				// 把整个msgs都记录下来
+				// 把真个 msgs 都记录下来
 				logger.Error(err))
 		}
 		for _, msg := range batch {
 			session.MarkMessage(msg, "")
 		}
-
 	}
 }

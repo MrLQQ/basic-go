@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"basic-go/webook/internal/domain"
 	"context"
+	"gitee.com/geekbang/basic-go/webook/internal/domain"
 )
 
 type HistoryRecordRepository interface {

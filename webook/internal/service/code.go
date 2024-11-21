@@ -1,39 +1,38 @@
 package service
 
 import (
-	"basic-go/webook/internal/repository"
-	"basic-go/webook/internal/repository/cache"
-	"basic-go/webook/internal/service/sms"
 	"context"
-	"errors"
 	"fmt"
+	"gitee.com/geekbang/basic-go/webook/internal/repository"
+	"gitee.com/geekbang/basic-go/webook/internal/service/sms"
 	"math/rand"
 )
 
-var ErrCodeSendTooMany = cache.ErrCodeSendTooMany
+var ErrCodeSendTooMany = repository.ErrCodeSendTooMany
 
+//go:generate mockgen -source=./code.go -package=svcmocks -destination=./mocks/code.mock.go CodeService
 type CodeService interface {
-	Verify(ctx context.Context, biz, phone, inputCode string) (bool, error)
 	Send(ctx context.Context, biz, phone string) error
+	Verify(ctx context.Context,
+		biz, phone, inputCode string) (bool, error)
 }
 
-// CodeRedisService ---------------------------------------使用Redis缓存实现--------------------------------------------------//
-type CodeRedisService struct {
+type codeService struct {
 	repo repository.CodeRepository
 	sms  sms.Service
 }
 
-func NewCodeRedisService(repo repository.CodeRepository, smsSve sms.Service) CodeService {
-	return &CodeRedisService{
+func NewCodeService(repo repository.CodeRepository, smsSvc sms.Service) CodeService {
+	return &codeService{
 		repo: repo,
-		sms:  smsSve,
+		sms:  smsSvc,
 	}
 }
 
-func (svc *CodeRedisService) Send(ctx context.Context, biz, phone string) error {
+func (svc *codeService) Send(ctx context.Context, biz, phone string) error {
 	code := svc.generate()
 	err := svc.repo.Set(ctx, biz, phone, code)
-	// 这里是不是要开始发验证吗？
+	// 你在这儿，是不是要开始发送验证码了？
 	if err != nil {
 		return err
 	}
@@ -41,58 +40,18 @@ func (svc *CodeRedisService) Send(ctx context.Context, biz, phone string) error 
 	return svc.sms.Send(ctx, codeTplId, []string{code}, phone)
 }
 
-func (svc *CodeRedisService) Verify(ctx context.Context,
+func (svc *codeService) Verify(ctx context.Context,
 	biz, phone, inputCode string) (bool, error) {
 	ok, err := svc.repo.Verify(ctx, biz, phone, inputCode)
-	if errors.Is(err, repository.ErrCodeVerifyTooMany) {
-		// 相当于，我们对外屏蔽的验证次数过多的错误，只告诉调用者，验证错误
+	if err == repository.ErrCodeVerifyTooMany {
+		// 相当于，我们对外面屏蔽了验证次数过多的错误，我们就是告诉调用者，你这个不对
 		return false, nil
 	}
 	return ok, err
 }
 
-func (svc *CodeRedisService) generate() string {
-	// 0~999999
-	code := rand.Intn(1000000)
-	return fmt.Sprintf("%06d", code)
-}
-
-// CodeCacheService --------------------------------------------本地缓存实现-----------------------------------------------//
-type CodeCacheService struct {
-	repo repository.CodeRepository
-	sms  sms.Service
-}
-
-func NewCodeCacheService(repo repository.CodeRepository, smsSve sms.Service) CodeService {
-	return &CodeCacheService{
-		repo: repo,
-		sms:  smsSve,
-	}
-}
-
-func (svc *CodeCacheService) Send(ctx context.Context, biz, phone string) error {
-	code := svc.generate()
-	err := svc.repo.Set(ctx, biz, phone, code)
-	// 这里是不是要开始发验证吗？
-	if err != nil {
-		return err
-	}
-	const codeTplId = "1877556"
-	return svc.sms.Send(ctx, codeTplId, []string{code}, phone)
-}
-
-func (svc *CodeCacheService) Verify(ctx context.Context,
-	biz, phone, inputCode string) (bool, error) {
-	ok, err := svc.repo.Verify(ctx, biz, phone, inputCode)
-	if errors.Is(err, repository.ErrCodeVerifyTooMany) {
-		// 相当于，我们对外屏蔽的验证次数过多的错误，只告诉调用者，验证错误
-		return false, nil
-	}
-	return ok, err
-}
-
-func (svc *CodeCacheService) generate() string {
-	// 0~999999
+func (svc *codeService) generate() string {
+	// 0-999999
 	code := rand.Intn(1000000)
 	return fmt.Sprintf("%06d", code)
 }

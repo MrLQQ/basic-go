@@ -1,10 +1,10 @@
 package failover
 
 import (
-	"basic-go/webook/internal/service/sms"
-	smsmocks "basic-go/webook/internal/service/sms/mocks"
 	"context"
 	"errors"
+	"gitee.com/geekbang/basic-go/webook/internal/service/sms"
+	smsmocks "gitee.com/geekbang/basic-go/webook/internal/service/sms/mocks"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 	"testing"
@@ -19,30 +19,32 @@ func TestTimeoutFailoverSMSService_Send(t *testing.T) {
 		cnt       int32
 
 		wantErr error
-		wantIdx int32
 		wantCnt int32
+		wantIdx int32
 	}{
 		{
-			name: "没有触发切换",
+			name: "咩有触发切换",
 			mock: func(ctrl *gomock.Controller) []sms.Service {
 				svc0 := smsmocks.NewMockService(ctrl)
-				svc0.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+				svc0.EXPECT().Send(gomock.Any(), gomock.Any(),
+					gomock.Any(), gomock.Any()).Return(nil)
 				return []sms.Service{svc0}
 			},
 			idx:       0,
 			cnt:       12,
 			threshold: 15,
 			wantIdx:   0,
-			// 成功了 重置超时次数
+			// 成功了，重置超时计数
 			wantCnt: 0,
 			wantErr: nil,
 		},
 		{
-			name: "触发切换，发送成功",
+			name: "触发切换，成功",
 			mock: func(ctrl *gomock.Controller) []sms.Service {
 				svc0 := smsmocks.NewMockService(ctrl)
 				svc1 := smsmocks.NewMockService(ctrl)
-				svc1.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+				svc1.EXPECT().Send(gomock.Any(), gomock.Any(),
+					gomock.Any(), gomock.Any()).Return(nil)
 				return []sms.Service{svc0, svc1}
 			},
 			idx:       0,
@@ -58,13 +60,14 @@ func TestTimeoutFailoverSMSService_Send(t *testing.T) {
 			mock: func(ctrl *gomock.Controller) []sms.Service {
 				svc0 := smsmocks.NewMockService(ctrl)
 				svc1 := smsmocks.NewMockService(ctrl)
-				svc1.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("发送失败"))
+				svc0.EXPECT().Send(gomock.Any(), gomock.Any(),
+					gomock.Any(), gomock.Any()).Return(errors.New("发送失败"))
 				return []sms.Service{svc0, svc1}
 			},
-			idx:       0,
+			idx:       1,
 			cnt:       15,
 			threshold: 15,
-			wantIdx:   1,
+			wantIdx:   0,
 			wantCnt:   0,
 			wantErr:   errors.New("发送失败"),
 		},
@@ -73,13 +76,15 @@ func TestTimeoutFailoverSMSService_Send(t *testing.T) {
 			mock: func(ctrl *gomock.Controller) []sms.Service {
 				svc0 := smsmocks.NewMockService(ctrl)
 				svc1 := smsmocks.NewMockService(ctrl)
-				svc1.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(context.DeadlineExceeded)
+				svc0.EXPECT().Send(gomock.Any(), gomock.Any(),
+					gomock.Any(), gomock.Any()).
+					Return(context.DeadlineExceeded)
 				return []sms.Service{svc0, svc1}
 			},
-			idx:       0,
+			idx:       1,
 			cnt:       15,
 			threshold: 15,
-			wantIdx:   1,
+			wantIdx:   0,
 			wantCnt:   1,
 			wantErr:   context.DeadlineExceeded,
 		},
@@ -89,16 +94,13 @@ func TestTimeoutFailoverSMSService_Send(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 			svc := NewTimeoutFailoverSMSService(tc.mock(ctrl), tc.threshold)
-			svc.idx = tc.idx
 			svc.cnt = tc.cnt
-			err := svc.Send(context.Background(), "123", []string{}, "11234123")
+			svc.idx = tc.idx
+			err := svc.Send(context.Background(), "1234",
+				[]string{"12", "34"}, "15312345678")
 			assert.Equal(t, tc.wantErr, err)
-			t.Log("tc.wantIdx=", tc.wantIdx)
-			t.Log("svc.idx=", svc.idx)
-			assert.Equal(t, tc.wantIdx, svc.idx)
-			t.Log("tc.wantCnt=", tc.wantCnt)
-			t.Log("svc.cnt=", svc.cnt)
 			assert.Equal(t, tc.wantCnt, svc.cnt)
+			assert.Equal(t, tc.wantIdx, svc.idx)
 		})
 	}
 }

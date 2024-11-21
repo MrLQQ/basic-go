@@ -46,8 +46,7 @@ const ArticleList = () => {
             "limit": 100,
         }).then((res) => res.data)
             .then((data) => {
-                console.log("data:",data)
-                setData(data)
+                setData(data.data)
                 setLoading(false)
             })
     }, [])
@@ -59,7 +58,7 @@ const ArticleList = () => {
                     return [
                         <Button key="3" type="primary" href={"/articles/edit"}>
                             写作
-                        </Button>
+                        </Button>,
                     ];
                 }}
                 itemLayout="vertical"

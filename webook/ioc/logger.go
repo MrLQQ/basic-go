@@ -1,7 +1,7 @@
 package ioc
 
 import (
-	"basic-go/webook/pkg/logger"
+	"gitee.com/geekbang/basic-go/webook/pkg/logger"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )

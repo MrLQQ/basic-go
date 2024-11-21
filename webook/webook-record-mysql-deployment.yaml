@@ -23,14 +23,13 @@ spec:
               value: root
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 3308
+            - containerPort: 3306
           volumeMounts:
-#            代表MySQL的存储目录，默认是这个，除非自己手动更改了配置文件
             - mountPath: /var/lib/mysql
               name: mysql-storage
       restartPolicy: Always
       volumes:
         - name: mysql-storage
           persistentVolumeClaim:
-#            PVC 就是 persistent Volume Claim
+#            PVC persistent volume claim
             claimName: webook-mysql-pvc

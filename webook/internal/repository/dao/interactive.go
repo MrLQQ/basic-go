@@ -13,8 +13,10 @@ type InteractiveDAO interface {
 	InsertLikeInfo(ctx context.Context, biz string, id int64, uid int64) error
 	DeleteLikeInfo(ctx context.Context, biz string, id int64, uid int64) error
 	InsertCollectionBiz(ctx context.Context, cb UserCollectionBiz) error
-	GetLikeInfo(ctx context.Context, biz string, id int64, uid int64) (UserLikeBiz, error)
-	GetCollectionInfo(ctx context.Context, biz string, id int64, uid int64) (UserCollectionBiz, error)
+	GetLikeInfo(ctx context.Context,
+		biz string, id int64, uid int64) (UserLikeBiz, error)
+	GetCollectInfo(ctx context.Context,
+		biz string, id int64, uid int64) (UserCollectionBiz, error)
 	Get(ctx context.Context, biz string, id int64) (Interactive, error)
 }
 
@@ -24,27 +26,33 @@ type GORMInteractiveDAO struct {
 
 func (dao *GORMInteractiveDAO) Get(ctx context.Context, biz string, id int64) (Interactive, error) {
 	var res Interactive
-	err := dao.db.WithContext(ctx).Where("biz = ? and biz_id = ?", biz, id).First(&res).Error
-	return res, err
-}
-
-func (dao *GORMInteractiveDAO) GetCollectionInfo(ctx context.Context, biz string, id int64, uid int64) (UserCollectionBiz, error) {
-	var res UserCollectionBiz
 	err := dao.db.WithContext(ctx).
-		Where("biz = ? and biz_id = ? and uid = ? and status =?", biz, id, uid, 1).
+		Where("biz = ? AND biz_id = ?", biz, id).
 		First(&res).Error
 	return res, err
 }
 
-func (dao *GORMInteractiveDAO) GetLikeInfo(ctx context.Context, biz string, id int64, uid int64) (UserLikeBiz, error) {
+func (dao *GORMInteractiveDAO) GetLikeInfo(ctx context.Context,
+	biz string, id int64, uid int64) (UserLikeBiz, error) {
 	var res UserLikeBiz
 	err := dao.db.WithContext(ctx).
-		Where("biz = ? and biz_id = ? and uid = ?", biz, id, uid).
+		Where("biz = ? AND biz_id = ? AND uid = ? AND status = ?",
+			biz, id, uid, 1).
 		First(&res).Error
 	return res, err
 }
 
-func (dao *GORMInteractiveDAO) InsertCollectionBiz(ctx context.Context, cb UserCollectionBiz) error {
+func (dao *GORMInteractiveDAO) GetCollectInfo(ctx context.Context,
+	biz string, id int64, uid int64) (UserCollectionBiz, error) {
+	var res UserCollectionBiz
+	err := dao.db.WithContext(ctx).
+		Where("biz = ? AND biz_id = ? AND uid = ?", biz, id, uid).
+		First(&res).Error
+	return res, err
+}
+
+func (dao *GORMInteractiveDAO) InsertCollectionBiz(ctx context.Context,
+	cb UserCollectionBiz) error {
 	now := time.Now().UnixMilli()
 	cb.Ctime = now
 	cb.Utime = now
@@ -68,7 +76,8 @@ func (dao *GORMInteractiveDAO) InsertCollectionBiz(ctx context.Context, cb UserC
 	})
 }
 
-func (dao *GORMInteractiveDAO) InsertLikeInfo(ctx context.Context, biz string, id int64, uid int64) error {
+func (dao *GORMInteractiveDAO) InsertLikeInfo(ctx context.Context,
+	biz string, id int64, uid int64) error {
 	now := time.Now().UnixMilli()
 	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Clauses(clause.OnConflict{
@@ -102,11 +111,12 @@ func (dao *GORMInteractiveDAO) InsertLikeInfo(ctx context.Context, biz string, i
 	})
 }
 
-func (dao *GORMInteractiveDAO) DeleteLikeInfo(ctx context.Context, biz string, id int64, uid int64) error {
+func (dao *GORMInteractiveDAO) DeleteLikeInfo(ctx context.Context,
+	biz string, id int64, uid int64) error {
 	now := time.Now().UnixMilli()
 	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.Model(&UserLikeBiz{}).
-			Where("uid = ? and biz_id =? and biz =?", uid, id, biz).
+			Where("uid=? AND biz_id = ? AND biz=?", uid, id, biz).
 			Updates(map[string]interface{}{
 				"utime":  now,
 				"status": 0,
@@ -115,18 +125,16 @@ func (dao *GORMInteractiveDAO) DeleteLikeInfo(ctx context.Context, biz string, i
 			return err
 		}
 		return tx.Model(&Interactive{}).
-			Where("biz=? and biz_id=?", biz, id).
+			Where("biz =? AND biz_id=?", biz, id).
 			Updates(map[string]interface{}{
-				"like_cnt": gorm.Expr("`like_cnt` - 1 "),
+				"like_cnt": gorm.Expr("`like_cnt` - 1"),
 				"utime":    now,
 			}).Error
 	})
 }
 
 func NewGORMInteractiveDAO(db *gorm.DB) InteractiveDAO {
-	return &GORMInteractiveDAO{
-		db: db,
-	}
+	return &GORMInteractiveDAO{db: db}
 }
 
 func (dao *GORMInteractiveDAO) BatchIncrReadCnt(ctx context.Context, bizs []string, bizIds []int64) error {
@@ -158,20 +166,6 @@ func (dao *GORMInteractiveDAO) IncrReadCnt(ctx context.Context, biz string, bizI
 	}).Error
 }
 
-type Interactive struct {
-	Id int64 `gorm:"primaryKey,autoIncrement"`
-
-	// 创建联合索引<bizid,biz>
-	BizId int64  `gorm:"uniqueIndex:biz_type_id"`
-	Biz   string `gorm:"type:varchar(128);uniqueIndex:biz_type_id"`
-
-	ReadCnt    int64
-	LikeCnt    int64
-	CollectCnt int64
-	Utime      int64
-	Ctime      int64
-}
-
 type UserLikeBiz struct {
 	Id     int64  `gorm:"primaryKey,autoIncrement"`
 	Uid    int64  `gorm:"uniqueIndex:uid_biz_type_id"`
@@ -193,4 +187,18 @@ type UserCollectionBiz struct {
 	Cid   int64 `gorm:"index"`
 	Utime int64
 	Ctime int64
+}
+
+type Interactive struct {
+	Id int64 `gorm:"primaryKey,autoIncrement"`
+	// <bizid, biz>
+	BizId int64 `gorm:"uniqueIndex:biz_type_id"`
+	// WHERE biz = ?
+	Biz string `gorm:"type:varchar(128);uniqueIndex:biz_type_id"`
+
+	ReadCnt    int64
+	LikeCnt    int64
+	CollectCnt int64
+	Utime      int64
+	Ctime      int64
 }

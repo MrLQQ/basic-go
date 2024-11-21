@@ -1,11 +1,11 @@
 package wechat
 
 import (
-	"basic-go/webook/internal/domain"
-	"basic-go/webook/pkg/logger"
 	"context"
 	"encoding/json"
 	"fmt"
+	"gitee.com/geekbang/basic-go/webook/internal/domain"
+	"gitee.com/geekbang/basic-go/webook/pkg/logger"
 	"net/http"
 	"net/url"
 )
@@ -15,7 +15,7 @@ type Service interface {
 	VerifyCode(ctx context.Context, code string) (domain.WechatInfo, error)
 }
 
-var redirectURL = url.PathEscape("https://meoying.com/oauth2/wecaht/callback")
+var redirectURL = url.PathEscape("https://meoying.com/oauth2/wechat/callback")
 
 type service struct {
 	appID     string
@@ -24,24 +24,18 @@ type service struct {
 	l         logger.LoggerV1
 }
 
-func NewService(appid string, appSecret string, l logger.LoggerV1) Service {
+func NewService(appID string, appSecret string, l logger.LoggerV1) Service {
 	return &service{
-		appID:     appid,
+		appID:     appID,
 		appSecret: appSecret,
 		client:    http.DefaultClient,
 	}
 }
-
-func (s *service) VerifyCode(ctx context.Context, code string) (domain.WechatInfo, error) {
-	const baseURL = "https://api.weixin.qq.com/sns/oauth2/access_token"
-	// 这是另外一种写法
-	queryParams := url.Values{}
-	queryParams.Set("appid", s.appID)
-	queryParams.Set("secret", s.appSecret)
-	queryParams.Set("code", code)
-	queryParams.Set("grant_type", "authorization_code")
-	accessTokenURL := baseURL + "?" + queryParams.Encode()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, accessTokenURL, nil)
+func (s *service) VerifyCode(ctx context.Context,
+	code string) (domain.WechatInfo, error) {
+	accessTokenUrl := fmt.Sprintf(`https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code`,
+		s.appID, s.appSecret, code)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, accessTokenUrl, nil)
 	if err != nil {
 		return domain.WechatInfo{}, err
 	}
@@ -49,14 +43,16 @@ func (s *service) VerifyCode(ctx context.Context, code string) (domain.WechatInf
 	if err != nil {
 		return domain.WechatInfo{}, err
 	}
+
 	var res Result
 	err = json.NewDecoder(httpResp.Body).Decode(&res)
 	if err != nil {
+		// 转 JSON 为结构体出错
 		return domain.WechatInfo{}, err
 	}
 	if res.ErrCode != 0 {
 		return domain.WechatInfo{},
-			fmt.Errorf("调用微信接口失败 errocde %d, errmsg %s", res.ErrCode, res.ErrMsg)
+			fmt.Errorf("调用微信接口失败 errcode %d, errmsg %s", res.ErrCode, res.ErrMsg)
 	}
 	return domain.WechatInfo{
 		UnionId: res.UnionId,
@@ -64,21 +60,25 @@ func (s *service) VerifyCode(ctx context.Context, code string) (domain.WechatInf
 	}, nil
 }
 
-func (s service) AuthURL(ctx context.Context, state string) (string, error) {
-	const authURLPattern = "https://open.weixin.qq.com/connect/qrconnect?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_login&state=%s#wechat_redirect"
-	return fmt.Sprint(authURLPattern, s.appID, redirectURL, state), nil
+func (s *service) AuthURL(ctx context.Context, state string) (string, error) {
+	const authURLPattern = `https://open.weixin.qq.com/connect/qrconnect?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_login&state=%s#wechat_redirect`
+	return fmt.Sprintf(authURLPattern, s.appID, redirectURL, state), nil
 }
 
 type Result struct {
-	ErrCode int64  `json:"errcode"`
-	ErrMsg  string `json:"errMsg"`
-
-	Scope string `json:"scope"`
-
-	AccessToken  string `json:"access_token"`
-	ExpiresIn    int64  `json:"expires_in"`
+	AccessToken string `json:"access_token"`
+	// access_token接口调用凭证超时时间，单位（秒）
+	ExpiresIn int64 `json:"expires_in"`
+	// 用户刷新access_token
 	RefreshToken string `json:"refresh_token"`
-
-	OpenId  string `json:"openid"`
+	// 授权用户唯一标识
+	OpenId string `json:"openid"`
+	// 用户授权的作用域，使用逗号（,）分隔
+	Scope string `json:"scope"`
+	// 当且仅当该网站应用已获得该用户的userinfo授权时，才会出现该字段。
 	UnionId string `json:"unionid"`
+
+	// 错误返回
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
 }

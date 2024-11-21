@@ -21,6 +21,6 @@ type nodeV1[T any] struct {
 func UseList() {
 	l := &LinkedListV1[int]{}
 	l.Add(1, 123)
-	//l.Add(1,"123")
+	//l.Add(1, "123")
 
 }

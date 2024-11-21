@@ -1,14 +1,15 @@
 package service
 
 import (
-	"basic-go/webook/internal/domain"
-	"basic-go/webook/internal/events/article"
-	"basic-go/webook/internal/repository"
-	"basic-go/webook/pkg/logger"
 	"context"
 	"errors"
+	"gitee.com/geekbang/basic-go/webook/internal/domain"
+	"gitee.com/geekbang/basic-go/webook/internal/events/article"
+	"gitee.com/geekbang/basic-go/webook/internal/repository"
+	"gitee.com/geekbang/basic-go/webook/pkg/logger"
 )
 
+//go:generate mockgen -source=./article.go -package=svcmocks -destination=./mocks/article.mock.go ArticleService
 type ArticleService interface {
 	Save(ctx context.Context, art domain.Article) (int64, error)
 	Publish(ctx context.Context, art domain.Article) (int64, error)
@@ -22,7 +23,7 @@ type articleService struct {
 	repo     repository.ArticleRepository
 	producer article.Producer
 
-	//	V1写法专用
+	// V1 写法专用
 	readerRepo repository.ArticleReaderRepository
 	authorRepo repository.ArticleAuthorRepository
 	l          logger.LoggerV1
@@ -30,24 +31,22 @@ type articleService struct {
 
 func (a *articleService) GetPubById(ctx context.Context, id, uid int64) (domain.Article, error) {
 	res, err := a.repo.GetPubById(ctx, id)
-	if err == nil {
-		//在这里发一个消息
-		er := a.producer.ProduceReadEvent(article.ReadEvent{
-			Aid: id,
-			Uid: uid,
-		})
-		if er != nil {
-			a.l.Error("发送 ReadEvent 失败",
-				logger.Int64("aid", id),
-				logger.Int64("uid", uid),
-				logger.Error(err))
-		}
-	}
 	go func() {
 		if err == nil {
-
+			// 在这里发一个消息
+			er := a.producer.ProduceReadEvent(article.ReadEvent{
+				Aid: id,
+				Uid: uid,
+			})
+			if er != nil {
+				a.l.Error("发送 ReadEvent 失败",
+					logger.Int64("aid", id),
+					logger.Int64("uid", uid),
+					logger.Error(err))
+			}
 		}
 	}()
+
 	return res, err
 }
 
@@ -69,11 +68,13 @@ func (a *articleService) Publish(ctx context.Context, art domain.Article) (int64
 }
 
 func (a *articleService) PublishV1(ctx context.Context, art domain.Article) (int64, error) {
-
+	// 想到这里要先操作制作库
+	// 这里操作线上库
 	var (
 		id  = art.Id
 		err error
 	)
+
 	if art.Id > 0 {
 		err = a.authorRepo.Update(ctx, art)
 	} else {
@@ -88,25 +89,23 @@ func (a *articleService) PublishV1(ctx context.Context, art domain.Article) (int
 		// 也可能没有
 		err = a.readerRepo.Save(ctx, art)
 		if err != nil {
-			a.l.Error("保存到制作库成功，但是到线上库失败",
+			// 多接入一些 tracing 的工具
+			a.l.Error("保存到制作库成功但是到线上库失败",
 				logger.Int64("aid", art.Id),
 				logger.Error(err))
 		} else {
 			return id, nil
 		}
-
 	}
-	a.l.Error("保存到制作库成功，但是到线上库失败，重试次数耗尽",
+	a.l.Error("保存到制作库成功但是到线上库失败，重试耗尽",
 		logger.Int64("aid", art.Id),
 		logger.Error(err))
 	return id, errors.New("保存到线上库失败，重试次数耗尽")
-
 }
 
 func NewArticleServiceV1(
 	readerRepo repository.ArticleReaderRepository,
-	authorRepo repository.ArticleAuthorRepository,
-	l logger.LoggerV1) *articleService {
+	authorRepo repository.ArticleAuthorRepository, l logger.LoggerV1) *articleService {
 	return &articleService{
 		readerRepo: readerRepo,
 		authorRepo: authorRepo,
@@ -127,8 +126,6 @@ func (a *articleService) Save(ctx context.Context, art domain.Article) (int64, e
 	if art.Id > 0 {
 		err := a.repo.Update(ctx, art)
 		return art.Id, err
-	} else {
-		return a.repo.Create(ctx, art)
 	}
-
+	return a.repo.Create(ctx, art)
 }

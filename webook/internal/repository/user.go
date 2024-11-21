@@ -1,77 +1,123 @@
 package repository
 
 import (
-	"basic-go/webook/internal/domain"
-	"basic-go/webook/internal/repository/cache"
-	"basic-go/webook/internal/repository/dao"
 	"context"
 	"database/sql"
+	"gitee.com/geekbang/basic-go/webook/internal/domain"
+	"gitee.com/geekbang/basic-go/webook/internal/repository/cache"
+	"gitee.com/geekbang/basic-go/webook/internal/repository/dao"
+	"log"
+	"time"
 )
 
 var (
-	ErrDuplicateUser = dao.ErrDuplicateUser
+	ErrDuplicateUser = dao.ErrDuplicateEmail
 	ErrUserNotFound  = dao.ErrRecordNotFound
 )
 
+//go:generate mockgen -source=./user.go -package=repomocks -destination=./mocks/user.mock.go UserRepository
 type UserRepository interface {
 	Create(ctx context.Context, u domain.User) error
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
+	UpdateNonZeroFields(ctx context.Context, user domain.User) error
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
-	Edit(ctx context.Context, profile domain.UserProfile) error
-	Profile(ctx context.Context, profile domain.UserProfile) (domain.UserProfile, error)
+	FindById(ctx context.Context, uid int64) (domain.User, error)
 	FindByWechat(ctx context.Context, openId string) (domain.User, error)
-	GetUserById(ctx context.Context, user domain.User) (domain.User, error)
 }
 
-type CacheUserRepository struct {
-	dao   dao.UserDao
+type CachedUserRepository struct {
+	dao   dao.UserDAO
 	cache cache.UserCache
 }
 
-func (repo *CacheUserRepository) GetUserById(ctx context.Context, user domain.User) (domain.User, error) {
-	u, err := repo.dao.GetUserById(ctx, user)
+func (repo *CachedUserRepository) FindByWechat(ctx context.Context, openId string) (domain.User, error) {
+	ue, err := repo.dao.FindByWechat(ctx, openId)
 	if err != nil {
 		return domain.User{}, err
 	}
-	return repo.toDomainUser(u), nil
+	return repo.toDomain(ue), nil
 }
 
-func NewCacheUserRepository(dao dao.UserDao, c cache.UserCache) UserRepository {
-	return &CacheUserRepository{
+type DBConfig struct {
+	DSN string
+}
+
+type CacheConfig struct {
+	Addr string
+}
+
+// NewUserRepositoryV2 强耦合到了 JSON
+//func NewUserRepositoryV2(cfgBytes string) *CachedUserRepository {
+//	var cfg DBConfig
+//	err := json.Unmarshal([]byte(cfgBytes), &cfg)
+//}
+
+// NewUserRepositoryV1 强耦合（跨层的），严重缺乏扩展性
+//func NewUserRepositoryV1(dbCfg DBConfig, cCfg CacheConfig) (*CachedUserRepository, error) {
+//	db, err := gorm.Open(mysql.Open(dbCfg.DSN))
+//	if err != nil {
+//		return nil, err
+//	}
+//	ud := dao.NewUserDAO(db)
+//	uc := cache.NewUserCache(redis.NewClient(&redis.Options{
+//		Addr: cCfg.Addr,
+//	}))
+//	return &CachedUserRepository{
+//		dao:   ud,
+//		cache: uc,
+//	}, nil
+//}
+
+func NewCachedUserRepository(dao dao.UserDAO,
+	c cache.UserCache) UserRepository {
+	return &CachedUserRepository{
 		dao:   dao,
 		cache: c,
 	}
 }
 
-func (repo *CacheUserRepository) Create(ctx context.Context, u domain.User) error {
+func (repo *CachedUserRepository) Create(ctx context.Context, u domain.User) error {
 	return repo.dao.Insert(ctx, repo.toEntity(u))
 }
 
-func (repo *CacheUserRepository) FindByEmail(ctx context.Context, email string) (domain.User, error) {
+func (repo *CachedUserRepository) FindByEmail(ctx context.Context, email string) (domain.User, error) {
 	u, err := repo.dao.FindByEmail(ctx, email)
 	if err != nil {
 		return domain.User{}, err
 	}
-	return repo.toDomainUser(u), nil
+	return repo.toDomain(u), nil
 }
 
-func (repo *CacheUserRepository) toDomainUser(u dao.User) domain.User {
+func (repo *CachedUserRepository) toDomain(u dao.User) domain.User {
 	return domain.User{
 		Id:       u.Id,
 		Email:    u.Email.String,
 		Phone:    u.Phone.String,
 		Password: u.Password,
+		AboutMe:  u.AboutMe,
+		Nickname: u.Nickname,
+		Birthday: time.UnixMilli(u.Birthday),
+		Ctime:    time.UnixMilli(u.Ctime),
 		WechatInfo: domain.WechatInfo{
 			OpenId:  u.WechatOpenId.String,
 			UnionId: u.WechatUnionId.String,
 		},
 	}
 }
-func (repo *CacheUserRepository) toEntity(u domain.User) dao.User {
+
+func (repo *CachedUserRepository) toEntity(u domain.User) dao.User {
 	return dao.User{
-		Id:    u.Id,
-		Email: sql.NullString{String: u.Email, Valid: u.Email != ""},
-		Phone: sql.NullString{String: u.Phone, Valid: u.Phone != ""},
+		Id: u.Id,
+		Email: sql.NullString{
+			String: u.Email,
+			Valid:  u.Email != "",
+		},
+		Phone: sql.NullString{
+			String: u.Phone,
+			Valid:  u.Phone != "",
+		},
+		Password: u.Password,
+		Birthday: u.Birthday.UnixMilli(),
 		WechatUnionId: sql.NullString{
 			String: u.WechatInfo.UnionId,
 			Valid:  u.WechatInfo.UnionId != "",
@@ -80,59 +126,100 @@ func (repo *CacheUserRepository) toEntity(u domain.User) dao.User {
 			String: u.WechatInfo.OpenId,
 			Valid:  u.WechatInfo.OpenId != "",
 		},
-		Password: u.Password,
+		AboutMe:  u.AboutMe,
+		Nickname: u.Nickname,
 	}
 }
 
-func (repo *CacheUserRepository) Edit(ctx context.Context, profile domain.UserProfile) error {
-	return repo.dao.Edit(ctx, dao.UserProfile{
-		Id:       profile.Id,
-		User_id:  profile.User_id,
-		Nickname: profile.Nickname,
-		Birthday: profile.Birthday,
-		About_me: profile.About_me,
-	})
-}
-
-func (repo *CacheUserRepository) Profile(ctx context.Context, profile domain.UserProfile) (domain.UserProfile, error) {
-	du, err := repo.cache.Get(ctx, profile.User_id)
-	if err == nil {
-		return du, err
-	}
-
-	u, err := repo.dao.Profile(ctx, dao.UserProfile{
-		User_id: profile.User_id,
-	})
+func (repo *CachedUserRepository) UpdateNonZeroFields(ctx context.Context,
+	user domain.User) error {
+	// 更新 DB 之后，删除
+	err := repo.dao.UpdateById(ctx, repo.toEntity(user))
 	if err != nil {
-		return domain.UserProfile{}, err
+		return err
 	}
-	du = repo.toDomainProfile(u)
+	// 延迟一秒
+	time.AfterFunc(time.Second, func() {
+		_ = repo.cache.Del(ctx, user.Id)
+	})
+	return repo.cache.Del(ctx, user.Id)
+}
+
+func (repo *CachedUserRepository) FindById(ctx context.Context, uid int64) (domain.User, error) {
+	//if ctx.Value("x-stress") != true {
+	//	du, err := repo.cache.Get(ctx, uid)
+	//	// 只要 err 为 nil，就返回
+	//	if err == nil {
+	//		return du, nil
+	//	}
+	//}
+	du, err := repo.cache.Get(ctx, uid)
+	// 只要 err 为 nil，就返回
+	if err == nil {
+		return du, nil
+	}
+
+	// err 不为 nil，就要查询数据库
+	// err 有两种可能
+	// 1. key 不存在，说明 redis 是正常的
+	// 2. 访问 redis 有问题。可能是网络有问题，也可能是 redis 本身就崩溃了
+
+	u, err := repo.dao.FindById(ctx, uid)
+	if err != nil {
+		return domain.User{}, err
+	}
+	du = repo.toDomain(u)
+	//go func() {
+	//	err = repo.cache.Set(ctx, du)
+	//	if err != nil {
+	//		log.Println(err)
+	//	}
+	//}()
+
 	err = repo.cache.Set(ctx, du)
+	if err != nil {
+		// 网络崩了，也可能是 redis 崩了
+		log.Println(err)
+	}
 	return du, nil
 }
 
-func (repo *CacheUserRepository) toDomainProfile(u dao.UserProfile) domain.UserProfile {
-	return domain.UserProfile{
-		Id:       u.Id,
-		User_id:  u.User_id,
-		Nickname: u.Nickname,
-		Birthday: u.Birthday,
-		About_me: u.About_me,
+func (repo *CachedUserRepository) FindByIdV1(ctx context.Context, uid int64) (domain.User, error) {
+	du, err := repo.cache.Get(ctx, uid)
+	// 只要 err 为 nil，就返回
+	switch err {
+	case nil:
+		return du, nil
+	case cache.ErrKeyNotExist:
+		u, err := repo.dao.FindById(ctx, uid)
+		if err != nil {
+			return domain.User{}, err
+		}
+		du = repo.toDomain(u)
+		//go func() {
+		//	err = repo.cache.Set(ctx, du)
+		//	if err != nil {
+		//		log.Println(err)
+		//	}
+		//}()
+
+		err = repo.cache.Set(ctx, du)
+		if err != nil {
+			// 网络崩了，也可能是 redis 崩了
+			log.Println(err)
+		}
+		return du, nil
+	default:
+		// 接近降级的写法
+		return domain.User{}, err
 	}
+
 }
 
-func (repo *CacheUserRepository) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
+func (repo *CachedUserRepository) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
 	u, err := repo.dao.FindByPhone(ctx, phone)
 	if err != nil {
 		return domain.User{}, err
 	}
-	return repo.toDomainUser(u), nil
-}
-
-func (repo *CacheUserRepository) FindByWechat(ctx context.Context, openId string) (domain.User, error) {
-	ue, err := repo.dao.FindByWechat(ctx, openId)
-	if err != nil {
-		return domain.User{}, err
-	}
-	return repo.toDomainUser(ue), nil
+	return repo.toDomain(u), nil
 }

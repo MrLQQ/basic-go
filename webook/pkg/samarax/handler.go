@@ -1,8 +1,8 @@
 package samarax
 
 import (
-	"basic-go/webook/pkg/logger"
 	"encoding/json"
+	"gitee.com/geekbang/basic-go/webook/pkg/logger"
 	"github.com/IBM/sarama"
 )
 
@@ -31,7 +31,7 @@ func (h *Handler[T]) ConsumeClaim(session sarama.ConsumerGroupSession, claim sar
 		err := json.Unmarshal(msg.Value, &t)
 		if err != nil {
 			// 你也可以在这里引入重试的逻辑
-			h.l.Error("反序列化消息体失败",
+			h.l.Error("反序列消息体失败",
 				logger.String("topic", msg.Topic),
 				logger.Int32("partition", msg.Partition),
 				logger.Int64("offset", msg.Offset),

@@ -10,8 +10,14 @@ import (
 )
 
 func InitTables(db *gorm.DB) error {
-	// 严格来说，这不是一个好的实践
-	return db.AutoMigrate(&User{}, &UserProfile{}, &Article{}, &Interactive{}, &UserLikeBiz{}, &UserCollectionBiz{})
+	// 严格来说，这个不是优秀实践
+	return db.AutoMigrate(&User{},
+		&Article{},
+		&PublishedArticle{},
+		&Interactive{},
+		&UserLikeBiz{},
+		&UserCollectionBiz{},
+		&AsyncSms{})
 }
 
 func InitCollection(mdb *mongo.Database) error {

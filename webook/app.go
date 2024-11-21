@@ -1,7 +1,7 @@
 package main
 
 import (
-	"basic-go/webook/internal/events"
+	"gitee.com/geekbang/basic-go/webook/internal/events"
 	"github.com/gin-gonic/gin"
 )
 

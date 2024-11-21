@@ -1,25 +1,15 @@
 package logger
 
-//func example() {
-//	var l Logger
-//	l.Info("微信用户未注册，注册新用户, 微信信息 %v", wechatInfo)
-//
-//	var l1 LoggerV1
-//	l1.Info("微信用户未注册，注册新用户", Field{
-//		Key:   "微信信息",
-//		Value: wechatInfo,
-//	})
-//
-//	var l2 LoggerV2
-//	l2.Info("微信用户未注册，注册新用户",
-//		"微信信息", wechatInfo)
-//}
-
 type Logger interface {
 	Debug(msg string, args ...any)
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
 	Error(msg string, args ...any)
+}
+
+func example() {
+	var l Logger
+	l.Info("用户的微信 id %d", 123)
 }
 
 type LoggerV1 interface {
@@ -30,12 +20,18 @@ type LoggerV1 interface {
 }
 
 type Field struct {
-	Key   string
-	Value any
+	Key string
+	Val any
 }
 
-// LoggerV2 要求 args 必须是偶数，第一个是 key，第二个是 value。
+func exampleV1() {
+	var l LoggerV1
+	// 这是一个新用户 union_id=123
+	l.Info("这是一个新用户", Field{Key: "union_id", Val: 123})
+}
+
 type LoggerV2 interface {
+	// 它要去 args 必须是偶数，并且是以 key1,value1,key2,value2 的形式传递
 	Debug(msg string, args ...any)
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
