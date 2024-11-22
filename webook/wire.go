@@ -48,7 +48,7 @@ func InitWebServer() *App {
 
 		// Service 部分
 		ioc.InitSMSService,
-		ioc.InitWechatService,
+		//ioc.InitWechatService,
 		service.NewUserService,
 		service.NewCodeService,
 		service.NewArticleService,

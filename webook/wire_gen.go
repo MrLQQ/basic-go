@@ -51,9 +51,9 @@ func InitWebServer() *App {
 	interactiveRepository := repository.NewCachedInteractiveRepository(interactiveDAO, loggerV1, interactiveCache)
 	interactiveService := service.NewInteractiveService(interactiveRepository)
 	articleHandler := web.NewArticleHandler(loggerV1, articleService, interactiveService)
-	wechatService := ioc.InitWechatService(loggerV1)
-	oAuth2WechatHandler := web.NewOAuth2WechatHandler(wechatService, handler, userService)
-	engine := ioc.InitWebServer(v, userHandler, articleHandler, oAuth2WechatHandler)
+	//wechatService := ioc.InitWechatService(loggerV1)
+	//oAuth2WechatHandler := web.NewOAuth2WechatHandler(wechatService, handler, userService)
+	engine := ioc.InitWebServer(v, userHandler, articleHandler)
 	interactiveReadEventConsumer := article.NewInteractiveReadEventConsumer(interactiveRepository, client, loggerV1)
 	v2 := ioc.InitConsumers(interactiveReadEventConsumer)
 	app := &App{
