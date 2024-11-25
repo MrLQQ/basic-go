@@ -24,6 +24,7 @@ func main() {
 			panic(err)
 		}
 	}
+	app.cron.Start()
 	server := app.server
 	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello，启动成功了！")
@@ -33,6 +34,8 @@ func main() {
 	//server.Run(":8081")
 	//server.Run(addr)
 	server.Run(":8080")
+	// 等待定时任务退出
+	<-app.cron.Stop().Done()
 }
 
 func initPrometheus() {

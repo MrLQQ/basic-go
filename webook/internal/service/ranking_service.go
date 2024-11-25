@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"gitee.com/geekbang/basic-go/webook/internal/domain"
+	"gitee.com/geekbang/basic-go/webook/internal/repository"
 	"github.com/ecodeclub/ekit/queue"
 	"github.com/ecodeclub/ekit/slice"
 	"log"
@@ -25,9 +26,11 @@ type BatchRankingService struct {
 	batchSize int
 	scoreFunc func(likeCnt int64, utime time.Time) float64
 	n         int
+
+	repo repository.RankingRepository
 }
 
-func NewBatchRankingService(intrSvc InteractiveService, artSvc ArticleService) *BatchRankingService {
+func NewBatchRankingService(intrSvc InteractiveService, artSvc ArticleService) RankingService {
 	return &BatchRankingService{
 		intrSvc:   intrSvc,
 		artSvc:    artSvc,
@@ -49,7 +52,7 @@ func (b *BatchRankingService) TopN(ctx context.Context) error {
 	// 最终是要放到缓存里面的
 	// 存到缓存里面
 	log.Println(arts)
-	panic("implement me")
+	return b.repo.ReplaceTopN(ctx, arts)
 }
 
 func (b *BatchRankingService) topN(ctx context.Context) ([]domain.Article, error) {
