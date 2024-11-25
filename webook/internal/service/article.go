@@ -33,7 +33,7 @@ type articleService struct {
 
 func (a *articleService) ListPub(ctx context.Context,
 	start time.Time, offset, limit int) ([]domain.Article, error) {
-	panic("implement me")
+	return a.repo.ListPub(ctx, start, offset, limit)
 }
 
 func (a *articleService) GetPubById(ctx context.Context, id, uid int64) (domain.Article, error) {
