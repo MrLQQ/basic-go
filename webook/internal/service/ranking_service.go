@@ -14,6 +14,7 @@ import (
 type RankingService interface {
 	// TopN 前100
 	TopN(ctx context.Context) error
+	GetTopN(ctx context.Context) ([]domain.Article, error)
 }
 
 type BatchRankingService struct {
@@ -44,6 +45,9 @@ func NewBatchRankingService(intrSvc InteractiveService, artSvc ArticleService) R
 	}
 }
 
+func (b *BatchRankingService) GetTopN(ctx context.Context) ([]domain.Article, error) {
+	return b.repo.GetTopN(ctx)
+}
 func (b *BatchRankingService) TopN(ctx context.Context) error {
 	arts, err := b.topN(ctx)
 	if err != nil {

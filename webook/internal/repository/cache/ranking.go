@@ -10,6 +10,7 @@ import (
 
 type RankingCache interface {
 	Set(ctx context.Context, arts []domain.Article) error
+	Get(ctx context.Context) ([]domain.Article, error)
 }
 
 type RankingRedisCache struct {
@@ -23,6 +24,16 @@ func NewRankingRedisCache(client redis.Cmdable) RankingCache {
 		key:        "ranking:top_n",
 		expiration: time.Minute * 3,
 	}
+}
+
+func (r *RankingRedisCache) Get(ctx context.Context) ([]domain.Article, error) {
+	val, err := r.client.Get(ctx, r.key).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	var res []domain.Article
+	err = json.Unmarshal(val, &res)
+	return res, err
 }
 
 func (r *RankingRedisCache) Set(ctx context.Context, arts []domain.Article) error {
