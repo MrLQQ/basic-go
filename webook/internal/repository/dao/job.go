@@ -11,10 +11,15 @@ type JobDAO interface {
 	Preempt(ctx context.Context) (Job, error)
 	Release(ctx context.Context, jid int64) error
 	UpdateUtime(ctx context.Context, id int64) error
+	UpdateNextTime(ctx context.Context, id int64, t time.Time) error
 }
 
 type GORMJobDAO struct {
 	db *gorm.DB
+}
+
+func NewGORMJobDAO(db *gorm.DB) JobDAO {
+	return &GORMJobDAO{db: db}
 }
 
 func (dao *GORMJobDAO) Preempt(ctx context.Context) (Job, error) {
@@ -63,8 +68,20 @@ func (dao *GORMJobDAO) UpdateUtime(ctx context.Context, jid int64) error {
 	}).Error
 }
 
+func (dao *GORMJobDAO) UpdateNextTime(ctx context.Context, jid int64, t time.Time) error {
+	now := time.Now().UnixMilli()
+	return dao.db.WithContext(ctx).Model(&Job{}).
+		Where("id = ?", jid).Updates(map[string]any{
+		"utime":     now,
+		"next_time": t.UnixMilli(),
+	}).Error
+}
+
 type Job struct {
-	Id int64 `gorm:"primaryKey,autoIncrement" bson:"id,omitempty"`
+	Id         int64  `gorm:"primaryKey,autoIncrement" bson:"id,omitempty"`
+	Name       string `gorm:"type:varchar(128);unique"`
+	Executor   string
+	Expression string
 
 	// 状态来表达，是不是可以抢占，有没有被人抢占
 	Status int

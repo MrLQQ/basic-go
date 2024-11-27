@@ -4,6 +4,7 @@ package startup
 
 import (
 	"gitee.com/geekbang/basic-go/webook/internal/events/article"
+	"gitee.com/geekbang/basic-go/webook/internal/job"
 	"gitee.com/geekbang/basic-go/webook/internal/repository"
 	"gitee.com/geekbang/basic-go/webook/internal/repository/cache"
 	"gitee.com/geekbang/basic-go/webook/internal/repository/dao"
@@ -20,6 +21,11 @@ var thirdPartySet = wire.NewSet( // 第三方依赖
 	InitSaramaClient,
 	InitSyncProducer,
 	InitLogger)
+
+var jobProviderSet = wire.NewSet(
+	service.NewCronJobService,
+	repository.NewPreemptJobRepository,
+	dao.NewGORMJobDAO)
 
 var userSvcProvider = wire.NewSet(
 	dao.NewUserDAO,
@@ -56,12 +62,12 @@ func InitWebServer() *gin.Engine {
 		// Service 部分
 		ioc.InitSMSService,
 		service.NewCodeService,
-		InitWechatService,
+		//InitWechatService,
 
 		// handler 部分
 		web.NewUserHandler,
 		web.NewArticleHandler,
-		web.NewOAuth2WechatHandler,
+		//web.NewOAuth2WechatHandler,
 		ijwt.NewRedisJWTHandler,
 		ioc.InitGinMiddlewares,
 		ioc.InitWebServer,
@@ -93,4 +99,9 @@ func InitArticleHandler(dao dao.ArticleDAO) *web.ArticleHandler {
 func InitInteractiveService() service.InteractiveService {
 	wire.Build(thirdPartySet, interactiveSvcSet)
 	return service.NewInteractiveService(nil)
+}
+
+func InitJobScheduler() *job.Scheduler {
+	wire.Build(jobProviderSet, thirdPartySet, job.NewScheduler)
+	return &job.Scheduler{}
 }

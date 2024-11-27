@@ -8,8 +8,9 @@ import (
 	"time"
 )
 
-type JobService interface {
+type CronJobService interface {
 	Preempt(ctx context.Context) (domain.Job, error)
+	ResetNextTime(ctx context.Context, j domain.Job) error
 	//Release(ctx context.Context, job domain.Job) error
 }
 
@@ -17,6 +18,12 @@ type cronJobService struct {
 	repo            repository.CronJobRepository
 	l               logger.LoggerV1
 	refreshInterval time.Duration
+}
+
+func NewCronJobService(repo repository.CronJobRepository, l logger.LoggerV1) CronJobService {
+	return &cronJobService{repo: repo,
+		l:               l,
+		refreshInterval: time.Minute}
 }
 
 func (c *cronJobService) Preempt(ctx context.Context) (domain.Job, error) {
@@ -42,6 +49,11 @@ func (c *cronJobService) Preempt(ctx context.Context) (domain.Job, error) {
 		}
 	}
 	return j, err
+}
+
+func (c *cronJobService) ResetNextTime(ctx context.Context, j domain.Job) error {
+	nextTime := j.NextTime()
+	return c.repo.UpdateNextTime(ctx, j.Id, nextTime)
 }
 
 func (c *cronJobService) refresh(id int64) {
