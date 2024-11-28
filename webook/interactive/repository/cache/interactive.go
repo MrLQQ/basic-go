@@ -5,7 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"gitee.com/geekbang/basic-go/webook/internal/domain"
+	"gitee.com/geekbang/basic-go/webook/interactive/domain"
 	"github.com/redis/go-redis/v9"
 	"strconv"
 	"time"

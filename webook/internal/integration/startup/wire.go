@@ -3,6 +3,10 @@
 package startup
 
 import (
+	repository2 "gitee.com/geekbang/basic-go/webook/interactive/repository"
+	cache2 "gitee.com/geekbang/basic-go/webook/interactive/repository/cache"
+	dao2 "gitee.com/geekbang/basic-go/webook/interactive/repository/dao"
+	service2 "gitee.com/geekbang/basic-go/webook/interactive/service"
 	"gitee.com/geekbang/basic-go/webook/internal/events/article"
 	"gitee.com/geekbang/basic-go/webook/internal/job"
 	"gitee.com/geekbang/basic-go/webook/internal/repository"
@@ -39,10 +43,10 @@ var articlSvcProvider = wire.NewSet(
 	dao.NewArticleGORMDAO,
 	service.NewArticleService)
 
-var interactiveSvcSet = wire.NewSet(dao.NewGORMInteractiveDAO,
-	cache.NewInteractiveRedisCache,
-	repository.NewCachedInteractiveRepository,
-	service.NewInteractiveService,
+var interactiveSvcSet = wire.NewSet(dao2.NewGORMInteractiveDAO,
+	cache2.NewInteractiveRedisCache,
+	repository2.NewCachedInteractiveRepository,
+	service2.NewInteractiveService,
 )
 
 func InitWebServer() *gin.Engine {
@@ -96,9 +100,9 @@ func InitArticleHandler(dao dao.ArticleDAO) *web.ArticleHandler {
 	return &web.ArticleHandler{}
 }
 
-func InitInteractiveService() service.InteractiveService {
+func InitInteractiveService() service2.InteractiveService {
 	wire.Build(thirdPartySet, interactiveSvcSet)
-	return service.NewInteractiveService(nil)
+	return service2.NewInteractiveService(nil)
 }
 
 func InitJobScheduler() *job.Scheduler {

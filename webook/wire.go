@@ -3,6 +3,11 @@
 package main
 
 import (
+	"gitee.com/geekbang/basic-go/webook/interactive/events"
+	repository2 "gitee.com/geekbang/basic-go/webook/interactive/repository"
+	cache2 "gitee.com/geekbang/basic-go/webook/interactive/repository/cache"
+	dao2 "gitee.com/geekbang/basic-go/webook/interactive/repository/dao"
+	service2 "gitee.com/geekbang/basic-go/webook/interactive/service"
 	"gitee.com/geekbang/basic-go/webook/internal/events/article"
 	"gitee.com/geekbang/basic-go/webook/internal/repository"
 	"gitee.com/geekbang/basic-go/webook/internal/repository/cache"
@@ -14,10 +19,10 @@ import (
 	"github.com/google/wire"
 )
 
-var interactiveSvcSet = wire.NewSet(dao.NewGORMInteractiveDAO,
-	cache.NewInteractiveRedisCache,
-	repository.NewCachedInteractiveRepository,
-	service.NewInteractiveService,
+var interactiveSvcSet = wire.NewSet(dao2.NewGORMInteractiveDAO,
+	cache2.NewInteractiveRedisCache,
+	repository2.NewCachedInteractiveRepository,
+	service2.NewInteractiveService,
 )
 
 var rankingSvcSet = wire.NewSet(
@@ -44,7 +49,7 @@ func InitWebServer() *App {
 		ioc.InitRankingJob,
 
 		article.NewSaramaSyncProducer,
-		article.NewInteractiveReadEventConsumer,
+		events.NewInteractiveReadEventConsumer,
 		ioc.InitConsumers,
 
 		// cache 部分
