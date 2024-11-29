@@ -1,8 +1,9 @@
 package integration
 
 import (
+	intrv1 "gitee.com/geekbang/basic-go/webook/api/proto/gen/intr/v1"
+	"gitee.com/geekbang/basic-go/webook/interactive/integration/startup"
 	"gitee.com/geekbang/basic-go/webook/interactive/repository/dao"
-	"gitee.com/geekbang/basic-go/webook/internal/integration/startup"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -39,7 +40,8 @@ func (s *InteractiveTestSuite) TestIncrReadCnt() {
 		biz   string
 		bizId int64
 
-		wantErr error
+		wantErr  error
+		wantResp *intrv1.IncrReadCntResponse
 	}{
 		{
 			// DB 和缓存都有数据
@@ -86,8 +88,9 @@ func (s *InteractiveTestSuite) TestIncrReadCnt() {
 				err = s.rdb.Del(ctx, "interactive:test:2").Err()
 				assert.NoError(t, err)
 			},
-			biz:   "test",
-			bizId: 2,
+			biz:      "test",
+			bizId:    2,
+			wantResp: &intrv1.IncrReadCntResponse{},
 		},
 		{
 			// DB 有数据，缓存没有数据
@@ -129,8 +132,9 @@ func (s *InteractiveTestSuite) TestIncrReadCnt() {
 				assert.NoError(t, err)
 				assert.Equal(t, int64(0), cnt)
 			},
-			biz:   "test",
-			bizId: 3,
+			biz:      "test",
+			bizId:    3,
+			wantResp: &intrv1.IncrReadCntResponse{},
 		},
 		{
 			name:   "增加成功-都没有",
@@ -156,8 +160,9 @@ func (s *InteractiveTestSuite) TestIncrReadCnt() {
 				assert.NoError(t, err)
 				assert.Equal(t, int64(0), cnt)
 			},
-			biz:   "test",
-			bizId: 4,
+			biz:      "test",
+			bizId:    4,
+			wantResp: &intrv1.IncrReadCntResponse{},
 		},
 	}
 
@@ -167,8 +172,12 @@ func (s *InteractiveTestSuite) TestIncrReadCnt() {
 	for _, tc := range testCases {
 		s.T().Run(tc.name, func(t *testing.T) {
 			tc.before(t)
-			err := svc.IncrReadCnt(context.Background(), tc.biz, tc.bizId)
+			resp, err := svc.IncrReadCnt(context.Background(), &intrv1.IncrReadCntRequest{
+				Biz:   tc.biz,
+				BizId: tc.bizId,
+			})
 			assert.Equal(t, tc.wantErr, err)
+			assert.Equal(t, tc.wantResp, resp)
 			tc.after(t)
 		})
 	}
@@ -185,7 +194,8 @@ func (s *InteractiveTestSuite) TestLike() {
 		bizId int64
 		uid   int64
 
-		wantErr error
+		wantErr  error
+		wantResp *intrv1.LikeResponse
 	}{
 		{
 			name: "点赞-DB和cache都有",
@@ -248,9 +258,10 @@ func (s *InteractiveTestSuite) TestLike() {
 				err = s.rdb.Del(ctx, "interactive:test:2").Err()
 				assert.NoError(t, err)
 			},
-			biz:   "test",
-			bizId: 2,
-			uid:   123,
+			biz:      "test",
+			bizId:    2,
+			uid:      123,
+			wantResp: &intrv1.LikeResponse{},
 		},
 		{
 			name:   "点赞-都没有",
@@ -295,9 +306,10 @@ func (s *InteractiveTestSuite) TestLike() {
 				assert.NoError(t, err)
 				assert.Equal(t, int64(0), cnt)
 			},
-			biz:   "test",
-			bizId: 3,
-			uid:   124,
+			biz:      "test",
+			bizId:    3,
+			uid:      124,
+			wantResp: &intrv1.LikeResponse{},
 		},
 	}
 
@@ -305,8 +317,11 @@ func (s *InteractiveTestSuite) TestLike() {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
-			err := svc.Like(context.Background(), tc.biz, tc.bizId, tc.uid)
-			assert.NoError(t, err)
+			resp, err := svc.Like(context.Background(), &intrv1.LikeRequest{
+				Biz: tc.biz, BizId: tc.bizId, Uid: tc.uid,
+			})
+			assert.Equal(t, tc.wantErr, err)
+			assert.Equal(t, tc.wantResp, resp)
 			tc.after(t)
 		})
 	}
@@ -323,7 +338,8 @@ func (s *InteractiveTestSuite) TestDislike() {
 		bizId int64
 		uid   int64
 
-		wantErr error
+		wantErr  error
+		wantResp *intrv1.CancelLikeResponse
 	}{
 		{
 			name: "取消点赞-DB和cache都有",
@@ -393,9 +409,10 @@ func (s *InteractiveTestSuite) TestDislike() {
 				err = s.rdb.Del(ctx, "interactive:test:2").Err()
 				assert.NoError(t, err)
 			},
-			biz:   "test",
-			bizId: 2,
-			uid:   123,
+			biz:      "test",
+			bizId:    2,
+			uid:      123,
+			wantResp: &intrv1.CancelLikeResponse{},
 		},
 	}
 
@@ -403,8 +420,11 @@ func (s *InteractiveTestSuite) TestDislike() {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
-			err := svc.CancelLike(context.Background(), tc.biz, tc.bizId, tc.uid)
-			assert.NoError(t, err)
+			resp, err := svc.CancelLike(context.Background(), &intrv1.CancelLikeRequest{
+				Biz: tc.biz, BizId: tc.bizId, Uid: tc.uid,
+			})
+			assert.Equal(t, tc.wantErr, err)
+			assert.Equal(t, tc.wantResp, resp)
 			tc.after(t)
 		})
 	}
