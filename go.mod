@@ -18,6 +18,7 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/google/wire v0.5.0
 	github.com/gotomicro/redis-lock v0.0.3
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/prometheus/client_golang v1.11.1
@@ -34,6 +35,8 @@ require (
 	golang.org/x/crypto v0.14.0
 	golang.org/x/net v0.17.0
 	golang.org/x/sync v0.9.0
+	google.golang.org/grpc v1.58.2
+	google.golang.org/protobuf v1.31.0
 	gorm.io/driver/mysql v1.5.2
 	gorm.io/driver/sqlite v1.5.4
 	gorm.io/gorm v1.25.12
@@ -81,7 +84,6 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -150,8 +152,6 @@ require (
 	google.golang.org/genproto v0.0.0-20230913181813-007df8e322eb // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230913181813-007df8e322eb // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230920204549-e6e6cdab5c13 // indirect
-	google.golang.org/grpc v1.58.2 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

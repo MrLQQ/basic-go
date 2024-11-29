@@ -5,6 +5,7 @@ import (
 	"gitee.com/geekbang/basic-go/webook/api/proto/gen/intr/v1"
 	"gitee.com/geekbang/basic-go/webook/interactive/domain"
 	"gitee.com/geekbang/basic-go/webook/interactive/service"
+	"google.golang.org/grpc"
 )
 
 type InteractiveServiceServer struct {
@@ -14,6 +15,10 @@ type InteractiveServiceServer struct {
 
 func NewInteractiveServiceServer(svc service.InteractiveService) *InteractiveServiceServer {
 	return &InteractiveServiceServer{svc: svc}
+}
+
+func (i *InteractiveServiceServer) Register(s *grpc.Server) {
+	intrv1.RegisterInteractiveServiceServer(s, i)
 }
 
 func (i *InteractiveServiceServer) IncrReadCnt(ctx context.Context, request *intrv1.IncrReadCntRequest) (*intrv1.IncrReadCntResponse, error) {
