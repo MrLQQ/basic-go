@@ -44,6 +44,7 @@ func InitWebServer() *App {
 		dao.NewArticleGORMDAO,
 
 		interactiveSvcSet,
+		ioc.InitIntrClient,
 		rankingSvcSet,
 		ioc.InitJobs,
 		ioc.InitRankingJob,

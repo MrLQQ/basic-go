@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	service2 "gitee.com/geekbang/basic-go/webook/interactive/service"
+	intrv1 "gitee.com/geekbang/basic-go/webook/api/proto/gen/intr/v1"
 	"gitee.com/geekbang/basic-go/webook/internal/domain"
 	"gitee.com/geekbang/basic-go/webook/internal/repository"
 	"github.com/ecodeclub/ekit/queue"
@@ -20,7 +20,7 @@ type RankingService interface {
 
 type BatchRankingService struct {
 	// 用来取点赞数
-	intrSvc service2.InteractiveService
+	intrSvc intrv1.InteractiveServiceClient
 
 	// 用来查找文章
 	artSvc ArticleService
@@ -32,7 +32,7 @@ type BatchRankingService struct {
 	repo repository.RankingRepository
 }
 
-func NewBatchRankingService(intrSvc service2.InteractiveService, artSvc ArticleService) RankingService {
+func NewBatchRankingService(intrSvc intrv1.InteractiveServiceClient, artSvc ArticleService) RankingService {
 	return &BatchRankingService{
 		intrSvc:   intrSvc,
 		artSvc:    artSvc,
@@ -93,7 +93,10 @@ func (b *BatchRankingService) topN(ctx context.Context) ([]domain.Article, error
 			return art.Id
 		})
 		// 取点赞数
-		intrMap, err := b.intrSvc.GetByIds(ctx, "article", ids)
+		intrResp, err := b.intrSvc.GetByIds(ctx, &intrv1.GetByIdsRequest{
+			Biz: "article", Ids: ids,
+		})
+		intrMap := intrResp.Intrs
 		if err != nil {
 			return nil, err
 		}
