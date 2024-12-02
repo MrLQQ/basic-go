@@ -47,6 +47,7 @@ var interactiveSvcSet = wire.NewSet(dao2.NewGORMInteractiveDAO,
 	cache2.NewInteractiveRedisCache,
 	repository2.NewCachedInteractiveRepository,
 	service2.NewInteractiveService,
+	ioc.InitIntrClient,
 )
 
 func InitWebServer() *gin.Engine {
@@ -66,26 +67,16 @@ func InitWebServer() *gin.Engine {
 		// Service 部分
 		ioc.InitSMSService,
 		service.NewCodeService,
-		//InitWechatService,
 
 		// handler 部分
 		web.NewUserHandler,
 		web.NewArticleHandler,
-		//web.NewOAuth2WechatHandler,
 		ijwt.NewRedisJWTHandler,
 		ioc.InitGinMiddlewares,
 		ioc.InitWebServer,
 	)
 	return gin.Default()
 }
-
-//func InitAsyncSmsService(svc sms.Service) *async.Service {
-//	wire.Build(thirdPartySet, repository.NewAsyncSMSRepository,
-//		dao.NewGORMAsyncSmsDAO,
-//		async.NewService,
-//	)
-//	return &async.Service{}
-//}
 
 func InitArticleHandler(dao dao.ArticleDAO) *web.ArticleHandler {
 	wire.Build(

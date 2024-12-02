@@ -52,7 +52,8 @@ func InitWebServer() *gin.Engine {
 	interactiveCache := cache2.NewInteractiveRedisCache(cmdable)
 	interactiveRepository := repository2.NewCachedInteractiveRepository(interactiveDAO, loggerV1, interactiveCache)
 	interactiveService := service2.NewInteractiveService(interactiveRepository)
-	articleHandler := web.NewArticleHandler(loggerV1, articleService, interactiveService)
+	interactiveServiceClient := ioc.InitIntrClient(interactiveService)
+	articleHandler := web.NewArticleHandler(loggerV1, articleService, interactiveServiceClient)
 	engine := ioc.InitWebServer(v, userHandler, articleHandler)
 	return engine
 }
@@ -74,19 +75,9 @@ func InitArticleHandler(dao3 dao.ArticleDAO) *web.ArticleHandler {
 	interactiveCache := cache2.NewInteractiveRedisCache(cmdable)
 	interactiveRepository := repository2.NewCachedInteractiveRepository(interactiveDAO, loggerV1, interactiveCache)
 	interactiveService := service2.NewInteractiveService(interactiveRepository)
-	articleHandler := web.NewArticleHandler(loggerV1, articleService, interactiveService)
+	interactiveServiceClient := ioc.InitIntrClient(interactiveService)
+	articleHandler := web.NewArticleHandler(loggerV1, articleService, interactiveServiceClient)
 	return articleHandler
-}
-
-func InitInteractiveService() service2.InteractiveService {
-	db := InitDB()
-	interactiveDAO := dao2.NewGORMInteractiveDAO(db)
-	loggerV1 := InitLogger()
-	cmdable := InitRedis()
-	interactiveCache := cache2.NewInteractiveRedisCache(cmdable)
-	interactiveRepository := repository2.NewCachedInteractiveRepository(interactiveDAO, loggerV1, interactiveCache)
-	interactiveService := service2.NewInteractiveService(interactiveRepository)
-	return interactiveService
 }
 
 func InitJobScheduler() *job.Scheduler {
@@ -113,4 +104,4 @@ var userSvcProvider = wire.NewSet(dao.NewUserDAO, cache.NewUserCache, repository
 
 var articlSvcProvider = wire.NewSet(repository.NewCachedArticleRepository, cache.NewArticleRedisCache, dao.NewArticleGORMDAO, service.NewArticleService)
 
-var interactiveSvcSet = wire.NewSet(dao2.NewGORMInteractiveDAO, cache2.NewInteractiveRedisCache, repository2.NewCachedInteractiveRepository, service2.NewInteractiveService)
+var interactiveSvcSet = wire.NewSet(dao2.NewGORMInteractiveDAO, cache2.NewInteractiveRedisCache, repository2.NewCachedInteractiveRepository, service2.NewInteractiveService, ioc.InitIntrClient)
