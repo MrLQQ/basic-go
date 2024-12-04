@@ -7,7 +7,6 @@
 package main
 
 import (
-	"gitee.com/geekbang/basic-go/webook/interactive/events"
 	repository2 "gitee.com/geekbang/basic-go/webook/interactive/repository"
 	cache2 "gitee.com/geekbang/basic-go/webook/interactive/repository/cache"
 	dao2 "gitee.com/geekbang/basic-go/webook/interactive/repository/dao"
@@ -51,16 +50,14 @@ func InitWebServer() *App {
 	syncProducer := ioc.InitSyncProducer(client)
 	producer := article.NewSaramaSyncProducer(syncProducer)
 	articleService := service.NewArticleService(articleRepository, producer)
-	interactiveDAO := dao2.NewGORMInteractiveDAO(db)
-	interactiveCache := cache2.NewInteractiveRedisCache(cmdable)
-	interactiveRepository := repository2.NewCachedInteractiveRepository(interactiveDAO, loggerV1, interactiveCache)
-	interactiveService := service2.NewInteractiveService(interactiveRepository)
-	interactiveServiceClient := ioc.InitIntrClient(interactiveService)
+	clientv3Client := ioc.InitEtcd()
+	interactiveServiceClient := ioc.InitIntrClientV1(clientv3Client)
 	articleHandler := web.NewArticleHandler(loggerV1, articleService, interactiveServiceClient)
 	engine := ioc.InitWebServer(v, userHandler, articleHandler)
-	interactiveReadEventConsumer := events.NewInteractiveReadEventConsumer(interactiveRepository, client, loggerV1)
-	v2 := ioc.InitConsumers(interactiveReadEventConsumer)
-	rankingService := service.NewBatchRankingService(interactiveServiceClient, articleService)
+	v2 := ioc.InitConsumers()
+	rankingCache := cache.NewRankingRedisCache(cmdable)
+	rankingRepository := repository.NewCachedRankingRepository(rankingCache)
+	rankingService := service.NewBatchRankingService(interactiveServiceClient, articleService, rankingRepository)
 	rlockClient := ioc.InitRlockClient(cmdable)
 	rankingJob := ioc.InitRankingJob(rankingService, rlockClient, loggerV1)
 	cron := ioc.InitJobs(loggerV1, rankingJob)

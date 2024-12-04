@@ -13,10 +13,11 @@ kafka:
 grpc:
   server:
     addr: "localhost:9094"
+    etcdAddr: "localhost:12379"
+    port: 8090
+    name: "interactive"
   client:
     intr:
-          addr: "etcd:///service/interactive"
+      addr: "etcd:///service/interactive"
 
-etcd:
-  addrs:
-    - "localhost:12379"
+

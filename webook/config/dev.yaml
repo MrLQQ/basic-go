@@ -17,4 +17,4 @@ etcd:
 grpc:
   client:
     intr:
-      addr: "localhost:8090"
+      addr: "etcd:///service/interactive"

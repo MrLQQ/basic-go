@@ -31,7 +31,7 @@ func InitApp() *App {
 	v := ioc.InitConsumers(interactiveReadEventConsumer)
 	interactiveService := service.NewInteractiveService(interactiveRepository)
 	interactiveServiceServer := grpc.NewInteractiveServiceServer(interactiveService)
-	server := ioc.NewGrpcxServer(interactiveServiceServer)
+	server := ioc.NewGrpcxServer(interactiveServiceServer, loggerV1)
 	app := &App{
 		consumers: v,
 		server:    server,
