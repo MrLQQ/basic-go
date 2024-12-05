@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	_ "gitee.com/geekbang/basic-go/webook/pkg/grpcx/balancer/wrr"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	etcdv3 "go.etcd.io/etcd/client/v3"
@@ -67,7 +68,7 @@ func (s *BalancerTestSuite) TestClient() {
 {
     "loadBalancingConfig": [
         {
-            "round_robin": {}
+            "custom_weighted_round_robin": {}
         }
     ]
 }
