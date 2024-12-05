@@ -29,6 +29,42 @@ func (s *BalancerTestSuite) SetupSuite() {
 	s.cli = cli
 }
 
+func (s *BalancerTestSuite) TestFailoverClient() {
+	t := s.T()
+	etcdResolver, err := resolver.NewBuilder(s.cli)
+	require.NoError(s.T(), err)
+	cc, err := grpc.Dial("etcd:///service/user",
+		grpc.WithResolvers(etcdResolver),
+		// round_robin 轮询
+		grpc.WithDefaultServiceConfig(`
+{
+  "loadBalancingConfig": [{"round_robin": {}}],
+  "methodConfig": [
+    {
+      "name": [{"service": "UserService"}],
+      "retryPolicy": {
+        "maxAttempts": 4,
+        "initialBackoff": "0.01s",
+        "maxBackOff": "0.1s",
+        "backoffMultiplier": 2.0,
+        "retryableStatueCodes": ["UNAVAILABLE"]
+      }
+    }
+  ]
+}
+`),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	client := NewUserServiceClient(cc)
+	for i := 0; i < 10; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		resp, err := client.GetById(ctx, &GetByIDRequest{Id: 123})
+		cancel()
+		require.NoError(t, err)
+		t.Log(resp.User)
+	}
+}
+
 func (s *BalancerTestSuite) TestClientWRR() {
 	t := s.T()
 	etcdResolver, err := resolver.NewBuilder(s.cli)
@@ -87,15 +123,21 @@ func (s *BalancerTestSuite) TestClient() {
 
 func (s *BalancerTestSuite) TestServer() {
 	go func() {
-		s.startServer(":8090", 10)
+		s.startServer(":8090", 10, &Server{
+			Name: "8090",
+		})
 	}()
 	go func() {
-		s.startServer(":8091", 20)
+		s.startServer(":8091", 20, &Server{
+			Name: "8090",
+		})
 	}()
-	s.startServer("8092", 30)
+	s.startServer("8092", 30, &FailedServer{
+		Name: "8092",
+	})
 }
 
-func (s *BalancerTestSuite) startServer(addr string, weight int) {
+func (s *BalancerTestSuite) startServer(addr string, weight int, svc UserServiceServer) {
 	t := s.T()
 	em, err := endpoints.NewManager(s.cli, "service/user")
 	require.NoError(t, err)
@@ -131,9 +173,7 @@ func (s *BalancerTestSuite) startServer(addr string, weight int) {
 	}()
 
 	server := grpc.NewServer()
-	RegisterUserServiceServer(server, &Server{
-		Name: addr,
-	})
+	RegisterUserServiceServer(server, svc)
 	server.Serve(l)
 	kaCancel()
 	err = em.DeleteEndpoint(ctx, key)
