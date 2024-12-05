@@ -6,6 +6,7 @@ import (
 
 type Server struct {
 	UnimplementedUserServiceServer
+	Name string
 }
 
 func (s *Server) GetById(ctx context.Context, request *GetByIDRequest) (*GetByIDResponse, error) {

@@ -131,7 +131,9 @@ func (s *BalancerTestSuite) startServer(addr string, weight int) {
 	}()
 
 	server := grpc.NewServer()
-	RegisterUserServiceServer(server, &Server{})
+	RegisterUserServiceServer(server, &Server{
+		Name: addr,
+	})
 	server.Serve(l)
 	kaCancel()
 	err = em.DeleteEndpoint(ctx, key)
