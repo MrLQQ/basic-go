@@ -10,7 +10,19 @@ type PickBuilder struct {
 }
 
 func (p *PickBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
-	panic("implement me")
+	conns := make([]*weightConn, 0, len(info.ReadySCs))
+	for sc, scInfo := range info.ReadySCs {
+		metadata, _ := scInfo.Address.Metadata.(map[string]any)
+		weightVal, _ := metadata["weight"]
+		weight, _ := weightVal.(float64)
+
+		conns = append(conns, &weightConn{
+			SubConn:       sc,
+			weight:        int(weight),
+			currentWeight: int(weight),
+		})
+	}
+	return &Picker{}
 }
 
 type Picker struct {
@@ -47,7 +59,7 @@ func (p *Picker) Pick(info balancer.PickInfo) (balancer.PickResult, error) {
 		SubConn: maxCC.SubConn,
 		// 这个是调用回调接口
 		Done: func(info balancer.DoneInfo) {
-
+			// 要在这里进一步调整weight/currentWeight
 		},
 	}, nil
 }
