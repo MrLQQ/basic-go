@@ -86,12 +86,15 @@ func (s *BalancerTestSuite) TestClient() {
 
 func (s *BalancerTestSuite) TestServer() {
 	go func() {
-		s.startServer(":8090")
+		s.startServer(":8090", 10)
 	}()
-	s.startServer("8091")
+	go func() {
+		s.startServer(":8091", 20)
+	}()
+	s.startServer("8092", 30)
 }
 
-func (s *BalancerTestSuite) startServer(addr string) {
+func (s *BalancerTestSuite) startServer(addr string, weight int) {
 	t := s.T()
 	em, err := endpoints.NewManager(s.cli, "service/user")
 	require.NoError(t, err)
@@ -112,6 +115,9 @@ func (s *BalancerTestSuite) startServer(addr string) {
 	err = em.AddEndpoint(ctx, key, endpoints.Endpoint{
 		// 定位信息，客户端怎么连你
 		Addr: addr,
+		Metadata: map[string]any{
+			"weight": weight,
+		},
 	}, etcdv3.WithLease(leaseResp.ID))
 	require.NoError(t, err)
 	kaCtx, kaCancel := context.WithCancel(context.Background())
