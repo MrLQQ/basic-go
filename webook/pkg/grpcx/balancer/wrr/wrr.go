@@ -6,6 +6,16 @@ import (
 	"sync"
 )
 
+const Name = "custom_weighted_round_robin"
+
+func newBuilder() balancer.Builder {
+	return base.NewBalancerBuilder(Name, &PickBuilder{}, base.Config{HealthCheck: true})
+}
+
+func init() {
+	balancer.Register(newBuilder())
+}
+
 type PickBuilder struct {
 }
 
