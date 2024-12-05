@@ -32,7 +32,9 @@ func (p *PickBuilder) Build(info base.PickerBuildInfo) balancer.Picker {
 			currentWeight: int(weight),
 		})
 	}
-	return &Picker{}
+	return &Picker{
+		conns: conns,
+	}
 }
 
 type Picker struct {
